@@ -93,14 +93,64 @@ To simulate tag pushes for testing release workflows, create an event file:
 
 ## Code Formatting (CI Requirement)
 
-The CI pipeline checks code formatting. Before pushing:
+The CI pipeline checks code formatting with `rustfmt`. Before pushing:
 
 ```powershell
-# Check formatting
+# Check formatting (what CI runs)
 cargo fmt --all -- --check
 
 # Auto-fix formatting issues
 cargo fmt --all
+```
+
+## Linting with Clippy (CI Requirement)
+
+The CI pipeline runs Clippy with warnings treated as errors. Before pushing:
+
+```powershell
+# Run clippy (what CI runs - treats warnings as errors)
+cargo clippy --all-targets --all-features -- -D warnings
+
+# Run clippy without failing on warnings (for development)
+cargo clippy --all-targets --all-features
+```
+
+### Common Clippy Fixes
+
+- **Unused variables**: Prefix with underscore (`_unused_var`)
+- **Unnecessary clones**: Remove `.clone()` when not needed
+- **Redundant closures**: Use function reference instead (`|x| foo(x)` → `foo`)
+- **Missing documentation**: Add `///` doc comments or `#[allow(missing_docs)]`
+
+### Suppressing Clippy Warnings
+
+When a warning is intentional, suppress it locally:
+
+```rust
+#[allow(clippy::too_many_arguments)]
+fn complex_function(...) { }
+
+// Or for a single expression
+#[allow(clippy::unwrap_used)]
+let value = some_option.unwrap(); // Only in tests
+```
+
+## Pre-Push Checklist
+
+Before pushing, run these commands to ensure CI will pass:
+
+```powershell
+# 1. Format code
+cargo fmt --all
+
+# 2. Check clippy
+cargo clippy --all-targets --all-features -- -D warnings
+
+# 3. Run unit tests
+cargo test --lib unit_tests
+
+# 4. Run local integration tests
+cargo test --lib local_integration_tests
 ```
 
 ## References
