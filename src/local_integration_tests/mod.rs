@@ -416,3 +416,107 @@ branch = "main"
 
     Ok(())
 }
+
+#[test]
+fn test_push_excludes_fpm_directory() -> Result<()> {
+    // This test verifies that when pushing a bundle, the nested .fpm directory
+    // is NOT included in the commit. This is critical to prevent accidentally
+    // pushing installed nested bundles to the source repository.
+    
+    check_preconditions()?;
+
+    let test_name = "push_excludes_fpm";
+    let test_dir = setup_test_env(TEST_CATEGORY, test_name)?;
+
+    // Step 1: Create a bare git repository
+    let remote_dir = test_dir.join("remote");
+    let setup_clone = test_dir.join("setup_clone");
+
+    let bundle_manifest = r#"fpm_version = "0.1.0"
+identifier = "fpm-bundle"
+description = "Test bundle"
+
+[bundles]
+"#;
+    setup_local_bare_repo(&remote_dir, &setup_clone, bundle_manifest, "version=0.0.1\n")?;
+
+    // Step 2: Create project and install the bundle
+    create_sample_project(&test_dir.join("project"))?;
+    let project_dir = test_dir.join("project");
+    let design_dir = project_dir.join("src").join("design");
+    fs::create_dir_all(&design_dir)?;
+
+    let mut bundles = HashMap::new();
+    bundles.insert(
+        "test-bundle".to_string(),
+        BundleDependency {
+            version: "1.0.0".to_string(),
+            git: remote_dir.to_str().unwrap().to_string(),
+            path: None,
+            branch: Some("main".to_string()),
+            ssh_key: None,
+        },
+    );
+    create_bundle_manifest(&design_dir, Some("Test"), None, bundles)?;
+
+    // Step 3: Install the bundle
+    let install_output = run_fpm(&["install"], &design_dir)?;
+    assert!(install_output.status.success(), "Install should succeed");
+
+    let bundle_path = design_dir.join(BUNDLE_DIR).join("test-bundle");
+    configure_git_user(&bundle_path)?;
+
+    // Step 4: Verify .gitignore was created/updated with .fpm/
+    let gitignore_path = bundle_path.join(".gitignore");
+    assert!(gitignore_path.exists(), ".gitignore should exist in bundle");
+    let gitignore_content = fs::read_to_string(&gitignore_path)?;
+    assert!(
+        gitignore_content.contains(".fpm"),
+        ".gitignore should contain .fpm. Got: {}",
+        gitignore_content
+    );
+
+    // Step 5: Create a fake nested .fpm directory in the installed bundle
+    // (simulating what would happen if the bundle had dependencies installed)
+    let nested_fpm_dir = bundle_path.join(BUNDLE_DIR);
+    fs::create_dir_all(&nested_fpm_dir)?;
+    fs::write(nested_fpm_dir.join("nested-bundle.txt"), "This should NOT be pushed")?;
+
+    // Step 6: Also modify counter.txt so we have changes to push
+    fs::write(bundle_path.join("counter.txt"), "version=0.0.2\ncount=1\n")?;
+
+    // Step 7: Push the bundle
+    let push_output = run_fpm(&["push", "-m", "Test push excludes .fpm"], &design_dir)?;
+    let push_stdout = String::from_utf8_lossy(&push_output.stdout);
+    println!("Push output: {}", push_stdout);
+    assert!(push_output.status.success(), "Push should succeed");
+
+    // Step 8: Verify the remote does NOT contain the .fpm directory
+    let verify_clone = test_dir.join("verify_clone");
+    std::process::Command::new("git")
+        .args([
+            "clone",
+            remote_dir.to_str().unwrap(),
+            verify_clone.to_str().unwrap(),
+        ])
+        .output()?;
+
+    // The .fpm directory should NOT exist in the remote
+    let remote_fpm_dir = verify_clone.join(BUNDLE_DIR);
+    assert!(
+        !remote_fpm_dir.exists(),
+        ".fpm directory should NOT be pushed to remote! It should be gitignored."
+    );
+
+    // But counter.txt should be updated
+    let remote_counter = fs::read_to_string(verify_clone.join("counter.txt"))?;
+    assert!(
+        remote_counter.contains("version=0.0.2"),
+        "counter.txt should be pushed. Got: {}",
+        remote_counter
+    );
+
+    cleanup_test_env(TEST_CATEGORY, test_name)?;
+
+    Ok(())
+}
