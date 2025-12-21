@@ -3,7 +3,7 @@ use clap::Parser;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use gitf2::cli::{Cli, Commands};
-use gitf2::commands::{install, publish, status};
+use gitf2::commands::{install, publish, push, status};
 
 fn main() -> Result<()> {
     tracing_subscriber::registry()
@@ -16,6 +16,9 @@ fn main() -> Result<()> {
     match cli.command {
         Commands::Install => install::execute(&cli.manifest_path)?,
         Commands::Publish => publish::execute(&cli.manifest_path)?,
+        Commands::Push { bundle, message } => {
+            push::execute(&cli.manifest_path, bundle.as_deref(), message.as_deref())?
+        }
         Commands::Status => status::execute(&cli.manifest_path)?,
     }
 

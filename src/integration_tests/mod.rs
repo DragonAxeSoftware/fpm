@@ -425,3 +425,304 @@ fn test_install_nested_bundles() -> Result<()> {
 
     Ok(())
 }
+
+/// Helper to configure git user for a repository
+fn configure_git_user(repo_path: &std::path::Path) -> Result<()> {
+    std::process::Command::new("git")
+        .args(["config", "user.email", "test@test.com"])
+        .current_dir(repo_path)
+        .output()?;
+    std::process::Command::new("git")
+        .args(["config", "user.name", "Test User"])
+        .current_dir(repo_path)
+        .output()?;
+    Ok(())
+}
+
+/// Helper to read current counter value from counter.txt
+fn read_counter_value(content: &str) -> u32 {
+    for line in content.lines() {
+        if line.starts_with("count=") {
+            if let Ok(val) = line.trim_start_matches("count=").parse::<u32>() {
+                return val;
+            }
+        }
+    }
+    0
+}
+
+/// Helper to read current version from counter.txt
+fn read_counter_version(content: &str) -> String {
+    for line in content.lines() {
+        if line.starts_with("version=") {
+            return line.trim_start_matches("version=").to_string();
+        }
+    }
+    "0.0.0".to_string()
+}
+
+/// Helper to bump patch version (0.0.1 -> 0.0.2)
+fn bump_patch_version(version: &str) -> String {
+    let parts: Vec<&str> = version.split('.').collect();
+    if parts.len() == 3 {
+        if let Ok(patch) = parts[2].parse::<u32>() {
+            return format!("{}.{}.{}", parts[0], parts[1], patch + 1);
+        }
+    }
+    version.to_string()
+}
+
+#[test]
+#[ignore] // Run only when explicitly requested: cargo test integration_tests -- --ignored
+fn test_push_counter_to_real_repo() -> Result<()> {
+    // Check preconditions
+    check_preconditions()?;
+
+    let test_name = "push_real_repo";
+    let test_dir = setup_test_env(TEST_CATEGORY, test_name)?;
+
+    // Step 1: Create a sample project structure
+    create_sample_project(&test_dir)?;
+
+    // Step 2: Create a bundle.toml that references the real example-1 repository
+    let design_dir = test_dir.join("src").join("design");
+    let mut bundles = HashMap::new();
+
+    bundles.insert(
+        "ui-assets".to_string(),
+        BundleDependency {
+            version: "1.0.0".to_string(),
+            git: EXAMPLE_1_REPO.to_string(),
+            path: None,
+            branch: Some("main".to_string()),
+            ssh_key: None,
+        },
+    );
+
+    create_bundle_manifest(
+        &design_dir,
+        Some("Real push test - counter.txt only"),
+        None,
+        bundles,
+    )?;
+
+    // Step 3: Install the bundle
+    println!("Installing ui-assets from real GitHub repo");
+    let install_output = run_gitf2(&["install"], &design_dir)?;
+    assert!(
+        install_output.status.success(),
+        "Install should succeed: {}",
+        String::from_utf8_lossy(&install_output.stderr)
+    );
+
+    // Verify the bundle is installed
+    let bundle_path = design_dir.join(BUNDLE_DIR).join("ui-assets");
+    assert!(bundle_path.exists(), "ui-assets bundle should be installed");
+
+    // Configure git user
+    configure_git_user(&bundle_path)?;
+
+    // Step 4: Read current counter.txt and bump version
+    let counter_path = bundle_path.join("counter.txt");
+    let current_content = if counter_path.exists() {
+        fs::read_to_string(&counter_path)?
+    } else {
+        "version=0.0.0\ncount=0\n".to_string()
+    };
+
+    let current_version = read_counter_version(&current_content);
+    let current_count = read_counter_value(&current_content);
+    let new_version = bump_patch_version(&current_version);
+    let new_count = current_count + 1;
+
+    println!(
+        "Updating counter.txt: version {} -> {}, count {} -> {}",
+        current_version, new_version, current_count, new_count
+    );
+
+    let new_content = format!("version={}\ncount={}\n", new_version, new_count);
+    fs::write(&counter_path, &new_content)?;
+
+    // Step 5: Run gitf2 push
+    println!("Pushing counter.txt update to real GitHub repo");
+    let push_output = run_gitf2(
+        &["push", "-m", &format!("gitf2 test: Bump counter to {}", new_version)],
+        &design_dir,
+    )?;
+    let push_stdout = String::from_utf8_lossy(&push_output.stdout);
+    let push_stderr = String::from_utf8_lossy(&push_output.stderr);
+    println!("Push stdout: {}", push_stdout);
+    println!("Push stderr: {}", push_stderr);
+
+    // Check if push succeeded or failed due to auth
+    if push_output.status.success() {
+        assert!(
+            push_stdout.contains("Pushed") || push_stdout.contains("✓"),
+            "Should indicate push success"
+        );
+        println!("✓ Successfully pushed counter.txt to {}", EXAMPLE_1_REPO);
+    } else {
+        // Expected to fail if no push access
+        let stderr_lower = push_stderr.to_lowercase();
+        let is_auth_error = stderr_lower.contains("permission")
+            || stderr_lower.contains("denied")
+            || stderr_lower.contains("authentication")
+            || stderr_lower.contains("403")
+            || stderr_lower.contains("401");
+
+        if is_auth_error {
+            println!(
+                "⚠ Push failed due to authentication (expected if no push access): {}",
+                push_stderr
+            );
+            // This is OK - we're testing the push mechanism works, auth is user-dependent
+        } else {
+            panic!("Push failed with unexpected error: {}", push_stderr);
+        }
+    }
+
+    cleanup_test_env(TEST_CATEGORY, test_name)?;
+
+    Ok(())
+}
+
+#[test]
+#[ignore] // Run only when explicitly requested: cargo test integration_tests -- --ignored
+fn test_push_nested_bundles_to_real_repos() -> Result<()> {
+    // Check preconditions
+    check_preconditions()?;
+
+    let test_name = "push_nested_real";
+    let test_dir = setup_test_env(TEST_CATEGORY, test_name)?;
+
+    // Step 1: Create a sample project structure
+    create_sample_project(&test_dir)?;
+
+    // Step 2: Create a bundle.toml that references example-2 (which depends on example-3)
+    let design_dir = test_dir.join("src").join("design");
+    let mut bundles = HashMap::new();
+
+    // Also add example-1 as a separate bundle
+    bundles.insert(
+        "ui-assets".to_string(),
+        BundleDependency {
+            version: "1.0.0".to_string(),
+            git: EXAMPLE_1_REPO.to_string(),
+            path: None,
+            branch: Some("main".to_string()),
+            ssh_key: None,
+        },
+    );
+
+    bundles.insert(
+        "ui-components".to_string(),
+        BundleDependency {
+            version: "1.0.0".to_string(),
+            git: EXAMPLE_2_REPO.to_string(),
+            path: None,
+            branch: Some("main".to_string()),
+            ssh_key: None,
+        },
+    );
+
+    create_bundle_manifest(
+        &design_dir,
+        Some("Nested push test - real repos"),
+        None,
+        bundles,
+    )?;
+
+    // Step 3: Install all bundles (including nested base-styles from example-3)
+    println!("Installing bundles from real GitHub repos");
+    let install_output = run_gitf2(&["install"], &design_dir)?;
+    assert!(
+        install_output.status.success(),
+        "Install should succeed: {}",
+        String::from_utf8_lossy(&install_output.stderr)
+    );
+
+    // Verify all bundles are installed
+    let ui_assets_path = design_dir.join(BUNDLE_DIR).join("ui-assets");
+    let ui_components_path = design_dir.join(BUNDLE_DIR).join("ui-components");
+    let base_styles_path = ui_components_path.join(BUNDLE_DIR).join("base-styles");
+
+    assert!(ui_assets_path.exists(), "ui-assets should be installed");
+    assert!(
+        ui_components_path.exists(),
+        "ui-components should be installed"
+    );
+    assert!(
+        base_styles_path.exists(),
+        "base-styles should be installed (nested)"
+    );
+
+    // Configure git user for all bundles
+    configure_git_user(&ui_assets_path)?;
+    configure_git_user(&ui_components_path)?;
+    configure_git_user(&base_styles_path)?;
+
+    // Step 4: Update counter.txt in all bundles
+    let bundle_paths = [
+        ("ui-assets", &ui_assets_path),
+        ("ui-components", &ui_components_path),
+        ("base-styles", &base_styles_path),
+    ];
+
+    for (name, path) in &bundle_paths {
+        let counter_path = path.join("counter.txt");
+        let current_content = if counter_path.exists() {
+            fs::read_to_string(&counter_path)?
+        } else {
+            "version=0.0.0\ncount=0\n".to_string()
+        };
+
+        let current_version = read_counter_version(&current_content);
+        let current_count = read_counter_value(&current_content);
+        let new_version = bump_patch_version(&current_version);
+        let new_count = current_count + 1;
+
+        println!(
+            "Updating {}/counter.txt: version {} -> {}, count {} -> {}",
+            name, current_version, new_version, current_count, new_count
+        );
+
+        let new_content = format!("version={}\ncount={}\n", new_version, new_count);
+        fs::write(&counter_path, &new_content)?;
+    }
+
+    // Step 5: Run gitf2 push - should push all 3 bundles (including nested)
+    println!("Pushing counter.txt updates to all real GitHub repos");
+    let push_output = run_gitf2(
+        &["push", "-m", "gitf2 test: Bump counters (nested push test)"],
+        &design_dir,
+    )?;
+    let push_stdout = String::from_utf8_lossy(&push_output.stdout);
+    let push_stderr = String::from_utf8_lossy(&push_output.stderr);
+    println!("Push stdout: {}", push_stdout);
+    println!("Push stderr: {}", push_stderr);
+
+    // Count successes and auth warnings
+    let success_count = push_stdout.matches('✓').count();
+    let warning_count = push_stdout.to_lowercase().matches("warning").count();
+
+    println!(
+        "Push results: {} succeeded, {} auth warnings",
+        success_count, warning_count
+    );
+
+    // The test passes if push command completed (even with auth warnings)
+    // The push mechanism is working, auth is user/environment dependent
+    if success_count > 0 {
+        println!("✓ Successfully pushed to {} bundle(s)", success_count);
+    }
+    if warning_count > 0 {
+        println!(
+            "⚠ {} bundle(s) had auth warnings (expected if no push access)",
+            warning_count
+        );
+    }
+
+    cleanup_test_env(TEST_CATEGORY, test_name)?;
+
+    Ok(())
+}

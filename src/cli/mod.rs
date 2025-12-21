@@ -33,6 +33,20 @@ pub enum Commands {
     /// Requires version increment if changes have been made.
     Publish,
 
+    /// Push changes in installed bundles back to their source repositories
+    /// 
+    /// Commits and pushes local modifications made to installed bundles.
+    /// Requires write access (credentials) to the source repository.
+    Push {
+        /// Name of the bundle to push (pushes all if not specified)
+        #[arg(short, long)]
+        bundle: Option<String>,
+
+        /// Commit message for the changes
+        #[arg(short, long)]
+        message: Option<String>,
+    },
+
     /// Show status of all bundles
     /// 
     /// Displays whether bundles are synced, unsynced, or are source bundles.

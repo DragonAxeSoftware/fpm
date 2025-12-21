@@ -17,3 +17,6 @@ mod unit_tests;
 
 #[cfg(test)]
 mod integration_tests;
+
+#[cfg(test)]
+mod local_integration_tests;
