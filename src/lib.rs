@@ -3,6 +3,9 @@
 //! A file package manager that resembles Git and NPM, but for files in general.
 //! Manages file bundles using git repositories as the backend storage.
 
+// Allow format!("{}", var) style - this is a stylistic preference
+#![allow(clippy::uninlined_format_args)]
+
 pub mod cli;
 pub mod commands;
 pub mod config;

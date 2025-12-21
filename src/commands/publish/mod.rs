@@ -50,11 +50,9 @@ pub fn execute_with_git(manifest_path: &Path, git_ops: Arc<dyn GitOperations>) -
     }
 
     // Check for changes
-    if !git_ops.is_repository(&root_dir) || !git_ops.has_local_changes(&root_dir)? {
-        if git_ops.is_repository(&root_dir) {
-            println!("{}", "No changes to publish.".yellow());
-            return Ok(());
-        }
+    if git_ops.is_repository(&root_dir) && !git_ops.has_local_changes(&root_dir)? {
+        println!("{}", "No changes to publish.".yellow());
+        return Ok(());
     }
 
     // Find the remote URL from bundles (self-reference pattern)

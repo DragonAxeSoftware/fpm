@@ -113,7 +113,7 @@ fn push_bundle_recursive(
         if let Ok(nested_manifest) = crate::config::load_manifest(&nested_manifest_path) {
             let nested_bundle_dir = bundle_path.join(BUNDLE_DIR);
 
-            for (nested_name, _) in &nested_manifest.bundles {
+            for nested_name in nested_manifest.bundles.keys() {
                 let nested_path = nested_bundle_dir.join(nested_name);
 
                 if nested_path.exists() && git_ops.is_repository(&nested_path) {
