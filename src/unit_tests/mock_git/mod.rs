@@ -3,7 +3,7 @@
 //! This module provides a mock git implementation that simulates git operations
 //! without actually connecting to remote repositories.
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -226,6 +226,13 @@ impl GitOperations for MockGitOperations {
     fn is_repository(&self, path: &Path) -> bool {
         let initialized = self._initialized_repos.read().unwrap();
         initialized.contains(&path.to_path_buf())
+    }
+
+    fn get_file_from_head(&self, repo_path: &Path, file_path: &str) -> Result<String> {
+        // Mock: read the file from the filesystem (simulating HEAD content)
+        let full_path = repo_path.join(file_path);
+        std::fs::read_to_string(&full_path)
+            .with_context(|| format!("Mock: file '{}' not found", full_path.display()))
     }
 }
 

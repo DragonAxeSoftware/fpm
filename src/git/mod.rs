@@ -24,6 +24,8 @@ pub trait GitOperations: Send + Sync {
     fn push(&self, path: &Path, remote: &str, branch: &str) -> Result<()>;
     fn has_local_changes(&self, path: &Path) -> Result<bool>;
     fn is_repository(&self, path: &Path) -> bool;
+    /// Get file content from HEAD commit
+    fn get_file_from_head(&self, repo_path: &Path, file_path: &str) -> Result<String>;
 }
 
 /// Default implementation using git2
@@ -191,6 +193,29 @@ impl GitOperations for Git2Operations {
     fn is_repository(&self, path: &Path) -> bool {
         Repository::open(path).is_ok()
     }
+
+    fn get_file_from_head(&self, repo_path: &Path, file_path: &str) -> Result<String> {
+        let repo = Repository::open(repo_path)
+            .with_context(|| format!("Failed to open repository: {}", repo_path.display()))?;
+        
+        let head = repo.head()
+            .context("Failed to get HEAD reference")?;
+        let commit = head.peel_to_commit()
+            .context("Failed to get HEAD commit")?;
+        let tree = commit.tree()
+            .context("Failed to get commit tree")?;
+        
+        let entry = tree.get_path(std::path::Path::new(file_path))
+            .with_context(|| format!("File '{}' not found in HEAD", file_path))?;
+        
+        let blob = repo.find_blob(entry.id())
+            .context("Failed to get file blob")?;
+        
+        let content = std::str::from_utf8(blob.content())
+            .context("File content is not valid UTF-8")?;
+        
+        Ok(content.to_string())
+    }
 }
 
 /// CLI-based git implementation using the system git command.
@@ -335,6 +360,24 @@ impl GitOperations for GitCliOperations {
     fn is_repository(&self, path: &Path) -> bool {
         path.join(".git").exists()
     }
+
+    fn get_file_from_head(&self, repo_path: &Path, file_path: &str) -> Result<String> {
+        let output = std::process::Command::new("git")
+            .args(["show", &format!("HEAD:{}", file_path)])
+            .current_dir(repo_path)
+            .output()
+            .context("Failed to run git show")?;
+        
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            anyhow::bail!("Failed to get file from HEAD: {}", stderr);
+        }
+        
+        let content = String::from_utf8(output.stdout)
+            .context("File content is not valid UTF-8")?;
+        
+        Ok(content)
+    }
 }
 
 /// Clones or updates a bundle from its git source
@@ -432,6 +475,11 @@ mod unit_tests {
 
         fn is_repository(&self, _path: &Path) -> bool {
             self.is_repo
+        }
+
+        fn get_file_from_head(&self, _repo_path: &Path, _file_path: &str) -> Result<String> {
+            // Mock: return empty string (will cause version comparison to fail gracefully)
+            anyhow::bail!("Mock: no HEAD commit")
         }
     }
 

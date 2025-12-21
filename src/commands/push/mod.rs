@@ -3,9 +3,9 @@ use colored::Colorize;
 use std::path::Path;
 use std::sync::Arc;
 
-use crate::config::load_manifest;
+use crate::config::{load_manifest, save_manifest};
 use crate::git::{GitCliOperations, GitOperations};
-use crate::types::{BUNDLE_DIR, DEFAULT_BRANCH};
+use crate::types::{BundleManifest, BUNDLE_DIR, DEFAULT_BRANCH};
 
 /// Executes the push command with the default GitCliOperations
 pub fn execute(manifest_path: &Path, bundle_name: Option<&str>, message: Option<&str>) -> Result<()> {
@@ -169,6 +169,79 @@ enum PushResult {
     NoChanges,
 }
 
+/// Bump patch version (0.0.1 -> 0.0.2)
+fn bump_patch_version(version: &str) -> String {
+    let parts: Vec<&str> = version.split('.').collect();
+    if parts.len() == 3 {
+        if let Ok(patch) = parts[2].parse::<u32>() {
+            return format!("{}.{}.{}", parts[0], parts[1], patch + 1);
+        }
+    }
+    version.to_string()
+}
+
+/// Check if the version was manually changed by comparing working tree to HEAD
+fn version_was_changed(git_ops: &dyn GitOperations, bundle_path: &Path) -> Result<bool> {
+    let manifest_path = bundle_path.join("bundle.toml");
+    
+    // Get the committed version from HEAD
+    let committed_content = git_ops.get_file_from_head(bundle_path, "bundle.toml")?;
+    let committed_manifest: BundleManifest = toml::from_str(&committed_content)
+        .context("Failed to parse committed bundle.toml")?;
+    
+    // Get the current version from working tree
+    let current_content = std::fs::read_to_string(&manifest_path)
+        .context("Failed to read bundle.toml")?;
+    let current_manifest: BundleManifest = toml::from_str(&current_content)
+        .context("Failed to parse bundle.toml")?;
+    
+    Ok(committed_manifest.version != current_manifest.version)
+}
+
+/// Auto-increment the version in the manifest if it hasn't been manually changed
+fn auto_increment_version_if_needed(
+    git_ops: &dyn GitOperations,
+    bundle_path: &Path,
+    indent: &str,
+) -> Result<()> {
+    let manifest_path = bundle_path.join("bundle.toml");
+    
+    // Check if version was already changed manually
+    match version_was_changed(git_ops, bundle_path) {
+        Ok(true) => {
+            // Version was manually changed, nothing to do
+            return Ok(());
+        }
+        Ok(false) => {
+            // Version not changed, we need to auto-increment
+        }
+        Err(_) => {
+            // Could not compare (maybe no HEAD commit yet), skip auto-increment
+            return Ok(());
+        }
+    }
+    
+    // Load manifest, bump version, save
+    let content = std::fs::read_to_string(&manifest_path)?;
+    let mut manifest: BundleManifest = toml::from_str(&content)
+        .context("Failed to parse bundle.toml")?;
+    
+    let old_version = manifest.version.clone().unwrap_or_else(|| "0.0.0".to_string());
+    let new_version = bump_patch_version(&old_version);
+    manifest.version = Some(new_version.clone());
+    
+    save_manifest(&manifest, &manifest_path)?;
+    
+    println!(
+        "{}Auto-incremented version: {} -> {}",
+        indent,
+        old_version.yellow(),
+        new_version.green()
+    );
+    
+    Ok(())
+}
+
 /// Push a single bundle's changes to its remote
 fn push_single_bundle(
     git_ops: &dyn GitOperations,
@@ -189,6 +262,9 @@ fn push_single_bundle(
     }
 
     println!("{}{} {}", indent, "Pushing".green(), name);
+
+    // Auto-increment version if user forgot to change it
+    auto_increment_version_if_needed(git_ops, bundle_path, indent)?;
 
     // Commit all changes
     let commit_msg = message.unwrap_or("fpm push: Update bundle");
@@ -238,6 +314,16 @@ fn print_summary(stats: &PushStats) {
 
 #[cfg(test)]
 mod unit_tests {
-    // Integration tests are more appropriate for this command
-    // as it requires real git operations
+    use super::*;
+
+    #[test]
+    fn test_bump_patch_version() {
+        assert_eq!(bump_patch_version("0.0.1"), "0.0.2");
+        assert_eq!(bump_patch_version("1.0.0"), "1.0.1");
+        assert_eq!(bump_patch_version("1.2.3"), "1.2.4");
+        assert_eq!(bump_patch_version("0.0.99"), "0.0.100");
+        // Invalid versions pass through unchanged
+        assert_eq!(bump_patch_version("invalid"), "invalid");
+        assert_eq!(bump_patch_version("1.0"), "1.0");
+    }
 }
