@@ -1,8 +1,8 @@
 # Example leaf bundle (no dependencies)
 # This bundle contains base styles and CSS variables
 
-gitf2_version = "0.1.0"
-identifier = "gitf2-bundle"
+fpm_version = "0.1.0"
+identifier = "fpm-bundle"
 description = "Base styles and CSS variables - foundation for other bundles"
 
 [bundles]

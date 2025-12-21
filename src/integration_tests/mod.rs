@@ -20,20 +20,20 @@ use crate::types::{BundleDependency, BUNDLE_DIR};
 const TEST_CATEGORY: &str = "integration";
 
 /// Example 1: UI assets bundle (leaf bundle, no dependencies)
-const EXAMPLE_1_REPO: &str = "https://github.com/DragonAxeSoftware/gitf2-example-1.git";
+const EXAMPLE_1_REPO: &str = "https://github.com/DragonAxeSoftware/fpm-example-1.git";
 
 /// Example 2: UI components bundle (depends on example-3)
-const EXAMPLE_2_REPO: &str = "https://github.com/DragonAxeSoftware/gitf2-example-2.git";
+const EXAMPLE_2_REPO: &str = "https://github.com/DragonAxeSoftware/fpm-example-2.git";
 
 /// Example 3: Base styles bundle (leaf bundle, no dependencies)
 /// This is automatically installed as a nested dependency of example-2
 #[allow(dead_code)]
-const EXAMPLE_3_REPO: &str = "https://github.com/DragonAxeSoftware/gitf2-example-3.git";
+const EXAMPLE_3_REPO: &str = "https://github.com/DragonAxeSoftware/fpm-example-3.git";
 
 /// SSH URLs for future SSH authentication tests
 /// NOTE: SSH authentication is not fully implemented in tests yet.
 #[allow(dead_code)]
-const EXAMPLE_1_REPO_SSH: &str = "git@github.com:DragonAxeSoftware/gitf2-example-1.git";
+const EXAMPLE_1_REPO_SSH: &str = "git@github.com:DragonAxeSoftware/fpm-example-1.git";
 
 /// Checks preconditions before running integration tests
 fn check_preconditions() -> Result<()> {

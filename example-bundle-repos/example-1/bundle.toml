@@ -1,7 +1,8 @@
 # Example bundle manifest
 # This bundle contains shared UI assets
 
-gitf2_version = "0.1.0"
+fpm_version = "0.1.0"
+identifier = "fpm-bundle"
 name = "ui-assets"
 version = "1.0.0"
 description = "Common UI assets including icons and stylesheets"
