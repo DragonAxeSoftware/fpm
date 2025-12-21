@@ -37,7 +37,8 @@ See Readme.md at the root of the repository for a summary of the project.
 
 ## Tests
 
-Test are separated in these modules: unit_tests (run within the app without any other external dependencies), integration_tests (run with external dependencies, such as a database or a blockchain node), manual_tests (run manually by a developer to test specific functionality). Avoid running all the tests as this takes time. Instead, run only the relevant tests for the code you are working on.
+- Test are separated in these modules: unit_tests (run within the app without any other external dependencies), integration_tests (run with external dependencies, such as a database or a blockchain node), manual_tests (run manually by a developer to test specific functionality). Avoid running all the tests as this takes time. Instead, run only the relevant tests for the code you are working on.
+- The unit tests of the project should be grouped in the unit_tests module and the integration tests in the integration_tests module.
 
 ## Scripts
 
