@@ -4,12 +4,12 @@ use std::path::Path;
 use std::sync::Arc;
 
 use crate::config::load_manifest;
-use crate::git::{init_bundle_for_publish, Git2Operations, GitOperations};
+use crate::git::{init_bundle_for_publish, GitCliOperations, GitOperations};
 use crate::types::{DEFAULT_BRANCH, DEFAULT_REMOTE};
 
-/// Executes the publish command with the default Git2Operations
+/// Executes the publish command with the default GitCliOperations
 pub fn execute(manifest_path: &Path) -> Result<()> {
-    let git_ops = Arc::new(Git2Operations::new());
+    let git_ops = Arc::new(GitCliOperations::new());
     execute_with_git(manifest_path, git_ops)
 }
 

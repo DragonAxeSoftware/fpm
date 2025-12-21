@@ -10,6 +10,9 @@ pub mod git;
 pub mod types;
 
 #[cfg(test)]
+mod test_utils;
+
+#[cfg(test)]
 mod unit_tests;
 
 #[cfg(test)]

@@ -1,7 +1,7 @@
 //! Unit tests for gitf2
 //!
 //! These tests run without external dependencies using mock implementations.
-//! Test files are placed at <workspace>/.tests directory.
+//! Test files are placed at <workspace>/.tests/unit directory.
 
 mod mock_git;
 
@@ -12,82 +12,20 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::commands::{install, status};
-use crate::config::{load_manifest, save_manifest};
-use crate::types::{BundleDependency, BundleManifest, BundleStatus, BUNDLE_DIR, GITF2_IDENTIFIER};
+use crate::config::load_manifest;
+use crate::test_utils::{
+    cleanup_test_env, create_bundle_manifest, create_sample_project, setup_test_env,
+};
+use crate::types::{BundleDependency, BundleStatus, BUNDLE_DIR};
 
 use self::mock_git::{MockBundleContent, MockGitOperations};
 
-/// Gets the test directory path
-fn get_test_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".tests")
-}
-
-/// Sets up a clean test environment
-fn setup_test_env(test_name: &str) -> Result<PathBuf> {
-    let test_dir = get_test_dir().join(test_name);
-    
-    // Clean up previous test run
-    if test_dir.exists() {
-        fs::remove_dir_all(&test_dir)?;
-    }
-    
-    fs::create_dir_all(&test_dir)?;
-    Ok(test_dir)
-}
-
-/// Cleans up test environment
-fn cleanup_test_env(test_name: &str) -> Result<()> {
-    let test_dir = get_test_dir().join(test_name);
-    if test_dir.exists() {
-        fs::remove_dir_all(&test_dir)?;
-    }
-    Ok(())
-}
-
-/// Creates a sample project structure with non-gitf2 files
-fn create_sample_project(base_dir: &Path) -> Result<()> {
-    // Create typical project structure
-    let src_dir = base_dir.join("src");
-    fs::create_dir_all(&src_dir)?;
-    
-    // Create some sample files
-    fs::write(base_dir.join("README.md"), "# My Project\n\nA sample project.")?;
-    fs::write(src_dir.join("main.rs"), "fn main() {\n    println!(\"Hello!\");\n}")?;
-    fs::write(base_dir.join(".gitignore"), "/target\n.gitf2/")?;
-    
-    // Create a design directory where we'll add bundles
-    let design_dir = src_dir.join("design");
-    fs::create_dir_all(&design_dir)?;
-    fs::write(design_dir.join("styles.css"), "body { margin: 0; }")?;
-    
-    Ok(())
-}
-
-/// Creates a bundle.toml manifest in the specified directory
-fn create_bundle_manifest(
-    dir: &Path,
-    description: Option<&str>,
-    root: Option<&str>,
-    bundles: HashMap<String, BundleDependency>,
-) -> Result<PathBuf> {
-    let manifest = BundleManifest {
-        gitf2_version: "0.1.0".to_string(),
-        identifier: GITF2_IDENTIFIER.to_string(),
-        description: description.map(String::from),
-        root: root.map(PathBuf::from),
-        bundles,
-    };
-    
-    let manifest_path = dir.join("bundle.toml");
-    save_manifest(&manifest, &manifest_path)?;
-    
-    Ok(manifest_path)
-}
+const TEST_CATEGORY: &str = "unit";
 
 #[test]
 fn test_full_install_workflow() -> Result<()> {
     let test_name = "install_workflow";
-    let test_dir = setup_test_env(test_name)?;
+    let test_dir = setup_test_env(TEST_CATEGORY, test_name)?;
     
     // Step 1: Create a sample project structure
     create_sample_project(&test_dir)?;
@@ -172,7 +110,7 @@ fn test_full_install_workflow() -> Result<()> {
     assert!(!statuses.is_empty(), "Should have bundle statuses");
     
     // Cleanup
-    cleanup_test_env(test_name)?;
+    cleanup_test_env(TEST_CATEGORY, test_name)?;
     
     Ok(())
 }
@@ -180,7 +118,7 @@ fn test_full_install_workflow() -> Result<()> {
 #[test]
 fn test_nested_bundles_workflow() -> Result<()> {
     let test_name = "nested_bundles";
-    let test_dir = setup_test_env(test_name)?;
+    let test_dir = setup_test_env(TEST_CATEGORY, test_name)?;
     
     create_sample_project(&test_dir)?;
     
@@ -246,7 +184,7 @@ fn test_nested_bundles_workflow() -> Result<()> {
     let nested_bundle_dir = ui_kit_dir.join(BUNDLE_DIR).join("base-styles");
     assert!(nested_bundle_dir.exists(), "Nested bundle should be installed");
     
-    cleanup_test_env(test_name)?;
+    cleanup_test_env(TEST_CATEGORY, test_name)?;
     
     Ok(())
 }
@@ -254,7 +192,7 @@ fn test_nested_bundles_workflow() -> Result<()> {
 #[test]
 fn test_duplicate_bundle_names_error() -> Result<()> {
     let test_name = "duplicate_names";
-    let test_dir = setup_test_env(test_name)?;
+    let test_dir = setup_test_env(TEST_CATEGORY, test_name)?;
     
     create_sample_project(&test_dir)?;
     
@@ -291,7 +229,7 @@ fn test_duplicate_bundle_names_error() -> Result<()> {
     let result = execute_install_with_mock(&manifest_path, mock_git);
     assert!(result.is_ok());
     
-    cleanup_test_env(test_name)?;
+    cleanup_test_env(TEST_CATEGORY, test_name)?;
     
     Ok(())
 }
@@ -299,7 +237,7 @@ fn test_duplicate_bundle_names_error() -> Result<()> {
 #[test]
 fn test_source_bundle_status() -> Result<()> {
     let test_name = "source_bundle";
-    let test_dir = setup_test_env(test_name)?;
+    let test_dir = setup_test_env(TEST_CATEGORY, test_name)?;
     
     create_sample_project(&test_dir)?;
     
@@ -328,7 +266,7 @@ fn test_source_bundle_status() -> Result<()> {
     let has_source = statuses.iter().any(|(_, status)| *status == BundleStatus::Source);
     assert!(has_source, "Should have a source bundle status");
     
-    cleanup_test_env(test_name)?;
+    cleanup_test_env(TEST_CATEGORY, test_name)?;
     
     Ok(())
 }

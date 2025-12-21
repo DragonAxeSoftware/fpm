@@ -4,7 +4,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use crate::config::load_manifest;
-use crate::git::{Git2Operations, GitOperations};
+use crate::git::{GitCliOperations, GitOperations};
 use crate::types::{BundleStatus, BUNDLE_DIR};
 
 /// Status entry for display
@@ -15,9 +15,9 @@ pub struct StatusEntry {
     pub depth: usize,
 }
 
-/// Executes the status command with the default Git2Operations
+/// Executes the status command with the default GitCliOperations
 pub fn execute(manifest_path: &Path) -> Result<()> {
-    let git_ops = Arc::new(Git2Operations::new());
+    let git_ops = Arc::new(GitCliOperations::new());
     execute_with_git(manifest_path, git_ops)
 }
 

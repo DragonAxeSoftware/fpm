@@ -179,6 +179,119 @@ impl GitOperations for Git2Operations {
     }
 }
 
+/// CLI-based git implementation using the system git command.
+/// This is more reliable for HTTPS authentication as it uses the user's
+/// configured credential helpers.
+pub struct GitCliOperations;
+
+impl GitCliOperations {
+    pub fn new() -> Self {
+        Self
+    }
+
+    fn run_git(&self, args: &[&str], working_dir: Option<&Path>) -> Result<()> {
+        let mut cmd = std::process::Command::new("git");
+        cmd.args(args);
+        
+        if let Some(dir) = working_dir {
+            cmd.current_dir(dir);
+        }
+        
+        let output = cmd.output()
+            .context("Failed to execute git command")?;
+        
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            anyhow::bail!("Git command failed: {}", stderr);
+        }
+        
+        Ok(())
+    }
+}
+
+impl Default for GitCliOperations {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl GitOperations for GitCliOperations {
+    fn clone_repository(&self, url: &str, path: &Path, branch: &str) -> Result<()> {
+        info!("Cloning {} to {} (branch: {})", url, path.display(), branch);
+        
+        self.run_git(&[
+            "clone",
+            "--branch", branch,
+            "--single-branch",
+            url,
+            &path.to_string_lossy(),
+        ], None)
+        .with_context(|| format!("Failed to clone repository: {}", url))
+    }
+
+    fn fetch_repository(&self, path: &Path, branch: &str) -> Result<()> {
+        debug!("Fetching updates for {}", path.display());
+        
+        self.run_git(&["fetch", "origin", branch], Some(path))
+            .context("Failed to fetch from remote")?;
+        
+        // Reset to the fetched branch
+        self.run_git(&["reset", "--hard", &format!("origin/{}", branch)], Some(path))
+            .context("Failed to reset to fetched branch")?;
+        
+        Ok(())
+    }
+
+    fn init_repository(&self, path: &Path) -> Result<()> {
+        info!("Initializing git repository at {}", path.display());
+        
+        std::fs::create_dir_all(path)?;
+        self.run_git(&["init", "-b", DEFAULT_BRANCH], Some(path))
+            .with_context(|| format!("Failed to initialize repository: {}", path.display()))
+    }
+
+    fn add_remote(&self, path: &Path, name: &str, url: &str) -> Result<()> {
+        debug!("Adding remote {} -> {}", name, url);
+        
+        // Try to add, if it fails try to set-url
+        if self.run_git(&["remote", "add", name, url], Some(path)).is_err() {
+            self.run_git(&["remote", "set-url", name, url], Some(path))?;
+        }
+        
+        Ok(())
+    }
+
+    fn commit_all(&self, path: &Path, message: &str) -> Result<()> {
+        debug!("Committing all changes in {}", path.display());
+        
+        self.run_git(&["add", "-A"], Some(path))?;
+        self.run_git(&["commit", "-m", message], Some(path))?;
+        
+        Ok(())
+    }
+
+    fn push(&self, path: &Path, remote: &str, branch: &str) -> Result<()> {
+        info!("Pushing to {} branch {}", remote, branch);
+        
+        self.run_git(&["push", "-u", remote, branch], Some(path))
+            .with_context(|| format!("Failed to push to {}/{}", remote, branch))
+    }
+
+    fn has_local_changes(&self, path: &Path) -> Result<bool> {
+        let output = std::process::Command::new("git")
+            .args(["status", "--porcelain"])
+            .current_dir(path)
+            .output()
+            .context("Failed to check git status")?;
+        
+        Ok(!output.stdout.is_empty())
+    }
+
+    fn is_repository(&self, path: &Path) -> bool {
+        path.join(".git").exists()
+    }
+}
+
 /// Clones or updates a bundle from its git source
 pub fn fetch_bundle(
     git_ops: &dyn GitOperations,
