@@ -1,21 +1,29 @@
 use anyhow::{Context, Result};
 use colored::Colorize;
 use std::path::Path;
+use std::sync::Arc;
 
 use crate::config::load_manifest;
 use crate::git::{Git2Operations, GitOperations};
 use crate::types::{BundleStatus, BUNDLE_DIR};
 
 /// Status entry for display
-struct StatusEntry {
-    name: String,
-    path: String,
-    status: BundleStatus,
-    depth: usize,
+pub struct StatusEntry {
+    pub name: String,
+    pub path: String,
+    pub status: BundleStatus,
+    pub depth: usize,
 }
 
-/// Executes the status command
+/// Executes the status command with the default Git2Operations
 pub fn execute(manifest_path: &Path) -> Result<()> {
+    let git_ops = Arc::new(Git2Operations::new());
+    execute_with_git(manifest_path, git_ops)
+}
+
+/// Executes the status command with a custom GitOperations implementation
+/// This enables dependency injection for testing
+pub fn execute_with_git(manifest_path: &Path, git_ops: Arc<dyn GitOperations>) -> Result<()> {
     let manifest_path = if manifest_path.is_relative() {
         std::env::current_dir()?.join(manifest_path)
     } else {
@@ -29,32 +37,7 @@ pub fn execute(manifest_path: &Path) -> Result<()> {
     );
     println!();
 
-    let manifest = load_manifest(&manifest_path)?;
-    let parent_dir = manifest_path
-        .parent()
-        .context("Invalid manifest path")?;
-
-    let git_ops = Git2Operations::new();
-    let mut entries = Vec::new();
-
-    // Check if the current bundle is a source bundle
-    if manifest.is_source_bundle() {
-        let root_path = parent_dir.join(manifest.root.as_ref().unwrap());
-        let status = determine_source_status(&git_ops, &root_path)?;
-        
-        entries.push(StatusEntry {
-            name: "(root)".to_string(),
-            path: root_path.to_string_lossy().to_string(),
-            status,
-            depth: 0,
-        });
-    }
-
-    // Check all bundles in .gitf2 directory
-    let bundle_dir = parent_dir.join(BUNDLE_DIR);
-    if bundle_dir.exists() {
-        collect_bundle_statuses(&git_ops, &bundle_dir, 0, &mut entries)?;
-    }
+    let entries = collect_all_statuses(&manifest_path, git_ops)?;
 
     // Display status
     if entries.is_empty() {
@@ -102,7 +85,47 @@ pub fn execute(manifest_path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn determine_source_status(git_ops: &Git2Operations, path: &Path) -> Result<BundleStatus> {
+/// Collects all bundle statuses without printing (useful for testing)
+pub fn collect_all_statuses(
+    manifest_path: &Path,
+    git_ops: Arc<dyn GitOperations>,
+) -> Result<Vec<StatusEntry>> {
+    let manifest_path = if manifest_path.is_relative() {
+        std::env::current_dir()?.join(manifest_path)
+    } else {
+        manifest_path.to_path_buf()
+    };
+
+    let manifest = load_manifest(&manifest_path)?;
+    let parent_dir = manifest_path
+        .parent()
+        .context("Invalid manifest path")?;
+
+    let mut entries = Vec::new();
+
+    // Check if the current bundle is a source bundle
+    if manifest.is_source_bundle() {
+        let root_path = parent_dir.join(manifest.root.as_ref().unwrap());
+        let status = determine_source_status(git_ops.as_ref(), &root_path)?;
+        
+        entries.push(StatusEntry {
+            name: "(root)".to_string(),
+            path: root_path.to_string_lossy().to_string(),
+            status,
+            depth: 0,
+        });
+    }
+
+    // Check all bundles in .gitf2 directory
+    let bundle_dir = parent_dir.join(BUNDLE_DIR);
+    if bundle_dir.exists() {
+        collect_bundle_statuses(git_ops.as_ref(), &bundle_dir, 0, &mut entries)?;
+    }
+
+    Ok(entries)
+}
+
+fn determine_source_status(git_ops: &dyn GitOperations, path: &Path) -> Result<BundleStatus> {
     if !path.exists() {
         return Ok(BundleStatus::Unsynced);
     }
@@ -118,7 +141,7 @@ fn determine_source_status(git_ops: &Git2Operations, path: &Path) -> Result<Bund
     Ok(BundleStatus::Source)
 }
 
-fn determine_bundle_status(git_ops: &Git2Operations, path: &Path) -> Result<BundleStatus> {
+fn determine_bundle_status(git_ops: &dyn GitOperations, path: &Path) -> Result<BundleStatus> {
     if !path.exists() {
         return Ok(BundleStatus::Unsynced);
     }
@@ -145,7 +168,7 @@ fn determine_bundle_status(git_ops: &Git2Operations, path: &Path) -> Result<Bund
 }
 
 fn collect_bundle_statuses(
-    git_ops: &Git2Operations,
+    git_ops: &dyn GitOperations,
     bundle_dir: &Path,
     depth: usize,
     entries: &mut Vec<StatusEntry>,

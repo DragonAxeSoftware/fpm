@@ -11,8 +11,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use crate::commands::{install, status};
 use crate::config::{load_manifest, save_manifest};
-use crate::git::GitOperations;
 use crate::types::{BundleDependency, BundleManifest, BundleStatus, BUNDLE_DIR, GITF2_IDENTIFIER};
 
 use self::mock_git::{MockBundleContent, MockGitOperations};
@@ -345,124 +345,17 @@ fn create_mock_bundle_content(description: &str) -> MockBundleContent {
 }
 
 /// Executes install command using mock git operations
+/// Now delegates to the actual install command with DI
 fn execute_install_with_mock(manifest_path: &Path, mock_git: Arc<MockGitOperations>) -> Result<()> {
-    use crate::config::load_manifest;
-    use crate::types::BUNDLE_DIR;
-    use std::collections::HashSet;
-    
-    let manifest = load_manifest(manifest_path)?;
-    let parent_dir = manifest_path.parent().unwrap();
-    
-    // Check for duplicate bundle names
-    let bundle_names: Vec<&str> = manifest.bundles.keys().map(|s| s.as_str()).collect();
-    let unique_names: HashSet<&str> = bundle_names.iter().copied().collect();
-    
-    if bundle_names.len() != unique_names.len() {
-        anyhow::bail!("Duplicate bundle names detected");
-    }
-    
-    let bundle_dir = parent_dir.join(BUNDLE_DIR);
-    fs::create_dir_all(&bundle_dir)?;
-    
-    for (name, dependency) in &manifest.bundles {
-        let target_path = bundle_dir.join(name);
-        
-        // Use mock git to "clone"
-        mock_git.clone_repository(&dependency.git, &target_path, dependency.branch())?;
-        
-        // Install nested bundles if the mock created a bundle.toml
-        let nested_manifest_path = target_path.join("bundle.toml");
-        if nested_manifest_path.exists() {
-            install_nested_bundles_with_mock(&nested_manifest_path, mock_git.clone())?;
-        }
-    }
-    
-    Ok(())
+    install::execute_with_git(manifest_path, mock_git)
 }
 
-fn install_nested_bundles_with_mock(manifest_path: &Path, mock_git: Arc<MockGitOperations>) -> Result<()> {
-    use crate::config::load_manifest;
-    use crate::types::BUNDLE_DIR;
-    
-    let manifest = load_manifest(manifest_path)?;
-    let parent_dir = manifest_path.parent().unwrap();
-    let bundle_dir = parent_dir.join(BUNDLE_DIR);
-    
-    if !bundle_dir.exists() {
-        fs::create_dir_all(&bundle_dir)?;
-    }
-    
-    for (name, dependency) in &manifest.bundles {
-        let target_path = bundle_dir.join(name);
-        mock_git.clone_repository(&dependency.git, &target_path, dependency.branch())?;
-        
-        let nested_manifest_path = target_path.join("bundle.toml");
-        if nested_manifest_path.exists() {
-            install_nested_bundles_with_mock(&nested_manifest_path, mock_git.clone())?;
-        }
-    }
-    
-    Ok(())
-}
-
+/// Gets bundle statuses using mock git operations
+/// Now delegates to the actual status command with DI
 fn get_bundle_statuses_with_mock(
     manifest_path: &Path,
     mock_git: Arc<MockGitOperations>,
 ) -> Result<Vec<(String, BundleStatus)>> {
-    use crate::config::load_manifest;
-    use crate::types::BUNDLE_DIR;
-    
-    let manifest = load_manifest(manifest_path)?;
-    let parent_dir = manifest_path.parent().unwrap();
-    
-    let mut statuses = Vec::new();
-    
-    // Check if source bundle
-    if manifest.is_source_bundle() {
-        let root_path = parent_dir.join(manifest.root.as_ref().unwrap());
-        let status = if root_path.exists() {
-            if mock_git.is_repository(&root_path) {
-                if mock_git.has_local_changes(&root_path)? {
-                    BundleStatus::Unsynced
-                } else {
-                    BundleStatus::Source
-                }
-            } else {
-                BundleStatus::Source
-            }
-        } else {
-            BundleStatus::Unsynced
-        };
-        
-        statuses.push(("(root)".to_string(), status));
-    }
-    
-    // Check installed bundles
-    let bundle_dir = parent_dir.join(BUNDLE_DIR);
-    if bundle_dir.exists() {
-        for entry in fs::read_dir(&bundle_dir)? {
-            let entry = entry?;
-            let path = entry.path();
-            
-            if !path.is_dir() {
-                continue;
-            }
-            
-            let name = path.file_name().unwrap().to_string_lossy().to_string();
-            
-            let status = if mock_git.is_repository(&path) {
-                if mock_git.has_local_changes(&path)? {
-                    BundleStatus::Unsynced
-                } else {
-                    BundleStatus::Synced
-                }
-            } else {
-                BundleStatus::Unsynced
-            };
-            
-            statuses.push((name, status));
-        }
-    }
-    
-    Ok(statuses)
+    let entries = status::collect_all_statuses(manifest_path, mock_git)?;
+    Ok(entries.into_iter().map(|e| (e.name, e.status)).collect())
 }

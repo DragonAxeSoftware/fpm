@@ -50,6 +50,7 @@ pub struct MockGitOperations {
 }
 
 #[derive(Clone)]
+#[allow(dead_code)] // Fields kept for potential test assertions
 pub struct ClonedRepo {
     pub url: String,
     pub path: PathBuf,

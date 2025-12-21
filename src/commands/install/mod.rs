@@ -3,13 +3,21 @@ use colored::Colorize;
 use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
+use std::sync::Arc;
 
 use crate::config::load_manifest;
-use crate::git::{fetch_bundle, Git2Operations};
+use crate::git::{fetch_bundle, Git2Operations, GitOperations};
 use crate::types::BUNDLE_DIR;
 
-/// Executes the install command
+/// Executes the install command with the default Git2Operations
 pub fn execute(manifest_path: &Path) -> Result<()> {
+    let git_ops = Arc::new(Git2Operations::new());
+    execute_with_git(manifest_path, git_ops)
+}
+
+/// Executes the install command with a custom GitOperations implementation
+/// This enables dependency injection for testing
+pub fn execute_with_git(manifest_path: &Path, git_ops: Arc<dyn GitOperations>) -> Result<()> {
     let manifest_path = if manifest_path.is_relative() {
         std::env::current_dir()?.join(manifest_path)
     } else {
@@ -35,7 +43,6 @@ pub fn execute(manifest_path: &Path) -> Result<()> {
         anyhow::bail!("Duplicate bundle names detected. Each bundle must have a unique name.");
     }
 
-    let git_ops = Git2Operations::new();
     let bundle_dir = parent_dir.join(BUNDLE_DIR);
 
     // Create the .gitf2 directory if it doesn't exist
@@ -45,20 +52,20 @@ pub fn execute(manifest_path: &Path) -> Result<()> {
     }
 
     // Check for conflicts before downloading anything
-    check_for_conflicts(&manifest.bundles.keys().collect::<Vec<_>>(), &bundle_dir)?;
+    check_for_conflicts(&manifest.bundles.keys().collect::<Vec<_>>())?;
 
     for (name, dependency) in &manifest.bundles {
         println!("  {} {}", "Fetching".green(), name);
         
         let target_path = bundle_dir.join(name);
         
-        fetch_bundle(&git_ops, dependency, &target_path)
+        fetch_bundle(git_ops.as_ref(), dependency, &target_path)
             .with_context(|| format!("Failed to fetch bundle: {}", name))?;
         
         // Handle nested bundles recursively
         let nested_manifest_path = target_path.join("bundle.toml");
         if nested_manifest_path.exists() {
-            install_nested_bundles(&nested_manifest_path, &git_ops)?;
+            install_nested_bundles(&nested_manifest_path, git_ops.clone())?;
         }
         
         println!("  {} {}", "✓".green(), name);
@@ -68,7 +75,7 @@ pub fn execute(manifest_path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn check_for_conflicts(names: &[&String], _bundle_dir: &Path) -> Result<()> {
+fn check_for_conflicts(names: &[&String]) -> Result<()> {
     let mut seen = HashSet::new();
     
     for name in names {
@@ -84,7 +91,7 @@ fn check_for_conflicts(names: &[&String], _bundle_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-fn install_nested_bundles(manifest_path: &Path, git_ops: &Git2Operations) -> Result<()> {
+fn install_nested_bundles(manifest_path: &Path, git_ops: Arc<dyn GitOperations>) -> Result<()> {
     let manifest = load_manifest(manifest_path)?;
     let parent_dir = manifest_path
         .parent()
@@ -100,12 +107,12 @@ fn install_nested_bundles(manifest_path: &Path, git_ops: &Git2Operations) -> Res
         println!("    {} (nested) {}", "Fetching".blue(), name);
         
         let target_path = bundle_dir.join(name);
-        fetch_bundle(git_ops, dependency, &target_path)?;
+        fetch_bundle(git_ops.as_ref(), dependency, &target_path)?;
         
         // Recursive nested bundles
         let nested_manifest_path = target_path.join("bundle.toml");
         if nested_manifest_path.exists() {
-            install_nested_bundles(&nested_manifest_path, git_ops)?;
+            install_nested_bundles(&nested_manifest_path, git_ops.clone())?;
         }
     }
     
@@ -122,7 +129,7 @@ mod unit_tests {
         let bundle_b = "bundle-b".to_string();
         let bundle_c = "bundle-c".to_string();
         let names = vec![&bundle_a, &bundle_b, &bundle_c];
-        let result = check_for_conflicts(&names, Path::new("/tmp"));
+        let result = check_for_conflicts(&names);
         assert!(result.is_ok());
     }
 }

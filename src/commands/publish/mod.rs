@@ -1,13 +1,21 @@
 use anyhow::{Context, Result};
 use colored::Colorize;
 use std::path::Path;
+use std::sync::Arc;
 
 use crate::config::load_manifest;
 use crate::git::{init_bundle_for_publish, Git2Operations, GitOperations};
 use crate::types::{DEFAULT_BRANCH, DEFAULT_REMOTE};
 
-/// Executes the publish command
+/// Executes the publish command with the default Git2Operations
 pub fn execute(manifest_path: &Path) -> Result<()> {
+    let git_ops = Arc::new(Git2Operations::new());
+    execute_with_git(manifest_path, git_ops)
+}
+
+/// Executes the publish command with a custom GitOperations implementation
+/// This enables dependency injection for testing
+pub fn execute_with_git(manifest_path: &Path, git_ops: Arc<dyn GitOperations>) -> Result<()> {
     let manifest_path = if manifest_path.is_relative() {
         std::env::current_dir()?.join(manifest_path)
     } else {
@@ -43,8 +51,6 @@ pub fn execute(manifest_path: &Path) -> Result<()> {
         );
     }
 
-    let git_ops = Git2Operations::new();
-
     // Check for changes
     if !git_ops.is_repository(&root_dir) || !git_ops.has_local_changes(&root_dir)? {
         if git_ops.is_repository(&root_dir) {
@@ -56,18 +62,17 @@ pub fn execute(manifest_path: &Path) -> Result<()> {
     // Find the remote URL from bundles (self-reference pattern)
     // For a source bundle to be publishable, we need to know where to push
     // This could be stored in a separate field or inferred
-    let remote_url = get_publish_remote(&manifest_path)?;
+    let remote_url = get_publish_remote(&manifest_path, git_ops.as_ref())?;
 
-    publish_bundle(&git_ops, &root_dir, &remote_url, &manifest.gitf2_version)?;
+    publish_bundle(git_ops.as_ref(), &root_dir, &remote_url, &manifest.gitf2_version)?;
 
     println!("{}", "Published successfully!".green().bold());
     Ok(())
 }
 
-fn get_publish_remote(manifest_path: &Path) -> Result<String> {
+fn get_publish_remote(manifest_path: &Path, git_ops: &dyn GitOperations) -> Result<String> {
     // Try to read the remote from git config if already initialized
     let parent = manifest_path.parent().context("Invalid manifest path")?;
-    let git_ops = Git2Operations::new();
     
     if git_ops.is_repository(parent) {
         // Try to get the gitf2 remote URL
@@ -93,7 +98,7 @@ fn get_publish_remote(manifest_path: &Path) -> Result<String> {
 }
 
 fn publish_bundle(
-    git_ops: &Git2Operations,
+    git_ops: &dyn GitOperations,
     root_dir: &Path,
     remote_url: &str,
     version: &str,
