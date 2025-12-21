@@ -24,6 +24,14 @@ pub struct BundleManifest {
     #[serde(default = "default_identifier")]
     pub identifier: String,
 
+    /// Optional name of the bundle
+    #[serde(default)]
+    pub name: Option<String>,
+
+    /// Optional version of the bundle (used for tracking/testing)
+    #[serde(default)]
+    pub version: Option<String>,
+
     /// Optional description of what this bundle is about
     #[serde(default)]
     pub description: Option<String>,
@@ -47,6 +55,8 @@ impl BundleManifest {
         Self {
             fpm_version: fpm_version.to_string(),
             identifier: FPM_IDENTIFIER.to_string(),
+            name: None,
+            version: None,
             description: None,
             root: None,
             bundles: HashMap::new(),

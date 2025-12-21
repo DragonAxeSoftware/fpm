@@ -3,6 +3,7 @@
 
 fpm_version = "0.1.0"
 identifier = "fpm-bundle"
+version = "1.0.0"
 description = "Base styles and CSS variables - foundation for other bundles"
 
 [bundles]

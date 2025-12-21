@@ -50,7 +50,6 @@ fn setup_local_bare_repo(
     remote_dir: &std::path::Path,
     setup_clone_dir: &std::path::Path,
     manifest_content: &str,
-    counter_content: &str,
 ) -> Result<()> {
     fs::create_dir_all(remote_dir)?;
 
@@ -97,7 +96,6 @@ fn setup_local_bare_repo(
 
     // Write initial content
     fs::write(setup_clone_dir.join("bundle.toml"), manifest_content)?;
-    fs::write(setup_clone_dir.join("counter.txt"), counter_content)?;
     fs::write(setup_clone_dir.join("README.md"), "# Test Bundle\n")?;
 
     // Commit and push
@@ -161,11 +159,12 @@ fn test_push_bundle_changes_local() -> Result<()> {
 
     let bundle_manifest = r#"fpm_version = "0.1.0"
 identifier = "fpm-bundle"
+version = "0.0.1"
 description = "Test bundle for push command"
 
 [bundles]
 "#;
-    setup_local_bare_repo(&remote_dir, &setup_clone, bundle_manifest, "version=0.0.1\ncount=0\n")?;
+    setup_local_bare_repo(&remote_dir, &setup_clone, bundle_manifest)?;
 
     // Step 2: Create a sample project that uses this bundle
     create_sample_project(&test_dir.join("project"))?;
@@ -208,20 +207,25 @@ description = "Test bundle for push command"
     let bundle_path = design_dir.join(BUNDLE_DIR).join("push-test");
     assert!(bundle_path.exists(), "push-test bundle should be installed");
     assert!(
-        bundle_path.join("counter.txt").exists(),
-        "counter.txt should exist"
+        bundle_path.join("bundle.toml").exists(),
+        "bundle.toml should exist"
     );
 
     // Configure git user for the installed bundle
     configure_git_user(&bundle_path)?;
 
-    // Step 4: Make local changes to counter.txt (simulate user edits)
-    let updated_counter = "version=0.0.2\ncount=1\n";
-    fs::write(bundle_path.join("counter.txt"), updated_counter)?;
+    // Step 4: Bump the version in the bundle manifest and create a counter file
+    let manifest_path = bundle_path.join("bundle.toml");
+    let manifest_content = fs::read_to_string(&manifest_path)?;
+    let updated_manifest = manifest_content.replace("version = \"0.0.1\"", "version = \"0.0.2\"");
+    fs::write(&manifest_path, &updated_manifest)?;
+    
+    // Also create a test counter file to verify new file creation works
+    fs::write(bundle_path.join("test_counter.txt"), "1\n")?;
 
     // Step 5: Run fpm push
     println!("Pushing bundle changes");
-    let push_output = run_fpm(&["push", "-m", "Bump counter to 0.0.2"], &design_dir)?;
+    let push_output = run_fpm(&["push", "-m", "Bump version to 0.0.2"], &design_dir)?;
     let push_stdout = String::from_utf8_lossy(&push_output.stdout);
     let push_stderr = String::from_utf8_lossy(&push_output.stderr);
     println!("Push stdout: {}", push_stdout);
@@ -247,15 +251,18 @@ description = "Test bundle for push command"
         "Failed to clone for verification"
     );
 
-    let remote_counter = fs::read_to_string(verify_clone.join("counter.txt"))?;
+    let remote_manifest = fs::read_to_string(verify_clone.join("bundle.toml"))?;
     assert!(
-        remote_counter.contains("version=0.0.2"),
+        remote_manifest.contains("version = \"0.0.2\""),
         "Remote should have updated version. Got: {}",
-        remote_counter
+        remote_manifest
     );
+
+    // Verify the test counter file was pushed (tests new file creation)
+    let remote_counter = fs::read_to_string(verify_clone.join("test_counter.txt"))?;
     assert!(
-        remote_counter.contains("count=1"),
-        "Remote should have updated count. Got: {}",
+        remote_counter.trim() == "1",
+        "Remote should have test_counter.txt with value 1. Got: {}",
         remote_counter
     );
 
@@ -266,7 +273,7 @@ description = "Test bundle for push command"
         .output()?;
     let log_msg = String::from_utf8_lossy(&log_output.stdout);
     assert!(
-        log_msg.contains("Bump counter to 0.0.2"),
+        log_msg.contains("Bump version to 0.0.2"),
         "Commit message should be in remote log. Got: {}",
         log_msg
     );
@@ -291,6 +298,7 @@ fn test_push_nested_bundles_local() -> Result<()> {
     // Setup child bundle
     let child_manifest = r#"fpm_version = "0.1.0"
 identifier = "fpm-bundle"
+version = "0.0.1"
 description = "Child bundle"
 
 [bundles]
@@ -299,13 +307,13 @@ description = "Child bundle"
         &child_remote,
         &test_dir.join("child_setup"),
         child_manifest,
-        "child_version=0.0.1\n",
     )?;
 
     // Setup parent bundle (depends on child)
     let parent_manifest = format!(
         r#"fpm_version = "0.1.0"
 identifier = "fpm-bundle"
+version = "0.0.1"
 description = "Parent bundle with child dependency"
 
 [bundles.child-bundle]
@@ -319,7 +327,6 @@ branch = "main"
         &parent_remote,
         &test_dir.join("parent_setup"),
         &parent_manifest,
-        "parent_version=0.0.1\n",
     )?;
 
     // Step 2: Create project and install the parent bundle
@@ -362,9 +369,18 @@ branch = "main"
     configure_git_user(&parent_path)?;
     configure_git_user(&child_path)?;
 
-    // Step 3: Modify counter.txt in both bundles
-    fs::write(parent_path.join("counter.txt"), "parent_version=0.0.2\n")?;
-    fs::write(child_path.join("counter.txt"), "child_version=0.0.2\n")?;
+    // Step 3: Bump version in both bundle manifests and create counter files
+    let parent_manifest_path = parent_path.join("bundle.toml");
+    let parent_manifest_content = fs::read_to_string(&parent_manifest_path)?;
+    let updated_parent = parent_manifest_content.replace("version = \"0.0.1\"", "version = \"0.0.2\"");
+    fs::write(&parent_manifest_path, &updated_parent)?;
+    fs::write(parent_path.join("test_counter.txt"), "1\n")?;
+
+    let child_manifest_path = child_path.join("bundle.toml");
+    let child_manifest_content = fs::read_to_string(&child_manifest_path)?;
+    let updated_child = child_manifest_content.replace("version = \"0.0.1\"", "version = \"0.0.2\"");
+    fs::write(&child_manifest_path, &updated_child)?;
+    fs::write(child_path.join("test_counter.txt"), "1\n")?;
 
     // Step 4: Run push - should push both nested bundles
     let push_output = run_fpm(&["push", "-m", "Bump to 0.0.2"], &design_dir)?;
@@ -390,11 +406,11 @@ branch = "main"
             verify_parent.to_str().unwrap(),
         ])
         .output()?;
-    let parent_counter = fs::read_to_string(verify_parent.join("counter.txt"))?;
+    let parent_manifest = fs::read_to_string(verify_parent.join("bundle.toml"))?;
     assert!(
-        parent_counter.contains("parent_version=0.0.2"),
+        parent_manifest.contains("version = \"0.0.2\""),
         "Parent remote should have updated version. Got: {}",
-        parent_counter
+        parent_manifest
     );
 
     let verify_child = test_dir.join("verify_child");
@@ -405,11 +421,11 @@ branch = "main"
             verify_child.to_str().unwrap(),
         ])
         .output()?;
-    let child_counter = fs::read_to_string(verify_child.join("counter.txt"))?;
+    let child_manifest = fs::read_to_string(verify_child.join("bundle.toml"))?;
     assert!(
-        child_counter.contains("child_version=0.0.2"),
+        child_manifest.contains("version = \"0.0.2\""),
         "Child remote should have updated version. Got: {}",
-        child_counter
+        child_manifest
     );
 
     cleanup_test_env(TEST_CATEGORY, test_name)?;
@@ -434,11 +450,12 @@ fn test_push_excludes_fpm_directory() -> Result<()> {
 
     let bundle_manifest = r#"fpm_version = "0.1.0"
 identifier = "fpm-bundle"
+version = "0.0.1"
 description = "Test bundle"
 
 [bundles]
 "#;
-    setup_local_bare_repo(&remote_dir, &setup_clone, bundle_manifest, "version=0.0.1\n")?;
+    setup_local_bare_repo(&remote_dir, &setup_clone, bundle_manifest)?;
 
     // Step 2: Create project and install the bundle
     create_sample_project(&test_dir.join("project"))?;
@@ -482,8 +499,12 @@ description = "Test bundle"
     fs::create_dir_all(&nested_fpm_dir)?;
     fs::write(nested_fpm_dir.join("nested-bundle.txt"), "This should NOT be pushed")?;
 
-    // Step 6: Also modify counter.txt so we have changes to push
-    fs::write(bundle_path.join("counter.txt"), "version=0.0.2\ncount=1\n")?;
+    // Step 6: Bump the version in the manifest and create counter file
+    let manifest_path = bundle_path.join("bundle.toml");
+    let manifest_content = fs::read_to_string(&manifest_path)?;
+    let updated_manifest = manifest_content.replace("version = \"0.0.1\"", "version = \"0.0.2\"");
+    fs::write(&manifest_path, &updated_manifest)?;
+    fs::write(bundle_path.join("test_counter.txt"), "1\n")?;
 
     // Step 7: Push the bundle
     let push_output = run_fpm(&["push", "-m", "Test push excludes .fpm"], &design_dir)?;
@@ -508,12 +529,12 @@ description = "Test bundle"
         ".fpm directory should NOT be pushed to remote! It should be gitignored."
     );
 
-    // But counter.txt should be updated
-    let remote_counter = fs::read_to_string(verify_clone.join("counter.txt"))?;
+    // But the manifest version should be updated
+    let remote_manifest = fs::read_to_string(verify_clone.join("bundle.toml"))?;
     assert!(
-        remote_counter.contains("version=0.0.2"),
-        "counter.txt should be pushed. Got: {}",
-        remote_counter
+        remote_manifest.contains("version = \"0.0.2\""),
+        "manifest version should be pushed. Got: {}",
+        remote_manifest
     );
 
     cleanup_test_env(TEST_CATEGORY, test_name)?;

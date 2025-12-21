@@ -74,6 +74,8 @@ pub fn create_bundle_manifest(
     let manifest = BundleManifest {
         fpm_version: "0.1.0".to_string(),
         identifier: FPM_IDENTIFIER.to_string(),
+        name: None,
+        version: None,
         description: description.map(String::from),
         root: root.map(PathBuf::from),
         bundles,

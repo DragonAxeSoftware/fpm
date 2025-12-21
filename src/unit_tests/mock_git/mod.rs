@@ -125,6 +125,8 @@ impl MockGitOperations {
         let manifest = BundleManifest {
             fpm_version: "0.1.0".to_string(),
             identifier: FPM_IDENTIFIER.to_string(),
+            name: None,
+            version: None,
             description: Some(registration.content.description.clone()),
             root: None,
             bundles: registration.nested_bundles.clone(),
@@ -173,6 +175,8 @@ impl GitOperations for MockGitOperations {
             let manifest = BundleManifest {
                 fpm_version: "0.1.0".to_string(),
                 identifier: FPM_IDENTIFIER.to_string(),
+                name: None,
+                version: None,
                 description: Some(format!("Mock bundle from {}", url)),
                 root: None,
                 bundles: HashMap::new(),

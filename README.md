@@ -132,19 +132,17 @@ The following example bundles are used for integration testing:
 - [fpm-example-2](https://github.com/DragonAxeSoftware/fpm-example-2) - UI components (depends on example-3)
 - [fpm-example-3](https://github.com/DragonAxeSoftware/fpm-example-3) - Base styles (leaf bundle)
 
-### Counter and Versioning
+### Version Tracking for Testing
 
-Each example bundle contains a `counter.txt` file used for testing the `push` command:
+Each example bundle has a `version` field in its `bundle.toml` manifest. Integration tests bump this version and create a `test_counter.txt` file to verify the `push` command works correctly:
 
+```toml
+fpm_version = "0.1.0"
+identifier = "fpm-bundle"
+version = "0.0.X"  # Incremented by integration tests
 ```
-version=0.0.X
-count=Y
-```
 
-- **version**: Patch version incremented on each test push
-- **count**: Total number of test pushes
-
-This file is intentionally simple and safe to modify during integration tests without disrupting the bundle's actual content. When running `fpm push` tests, only `counter.txt` is updated, leaving other files untouched.
+The `test_counter.txt` file contains an incrementing number to verify that new files can be pushed alongside existing file modifications.
 
 ## License
 

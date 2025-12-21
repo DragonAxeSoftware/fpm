@@ -7,7 +7,7 @@
 //!
 //! Run with: `cargo test integration_tests -- --ignored`
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use std::collections::HashMap;
 use std::fs;
 
@@ -15,7 +15,7 @@ use crate::test_utils::{
     cleanup_test_env, create_bundle_manifest, create_sample_project, get_fpm_binary_path,
     is_git_available, run_fpm, setup_test_env,
 };
-use crate::types::{BundleDependency, BUNDLE_DIR};
+use crate::types::{BundleDependency, BundleManifest, BUNDLE_DIR};
 
 const TEST_CATEGORY: &str = "integration";
 
@@ -439,28 +439,6 @@ fn configure_git_user(repo_path: &std::path::Path) -> Result<()> {
     Ok(())
 }
 
-/// Helper to read current counter value from counter.txt
-fn read_counter_value(content: &str) -> u32 {
-    for line in content.lines() {
-        if line.starts_with("count=") {
-            if let Ok(val) = line.trim_start_matches("count=").parse::<u32>() {
-                return val;
-            }
-        }
-    }
-    0
-}
-
-/// Helper to read current version from counter.txt
-fn read_counter_version(content: &str) -> String {
-    for line in content.lines() {
-        if line.starts_with("version=") {
-            return line.trim_start_matches("version=").to_string();
-        }
-    }
-    "0.0.0".to_string()
-}
-
 /// Helper to bump patch version (0.0.1 -> 0.0.2)
 fn bump_patch_version(version: &str) -> String {
     let parts: Vec<&str> = version.split('.').collect();
@@ -470,6 +448,41 @@ fn bump_patch_version(version: &str) -> String {
         }
     }
     version.to_string()
+}
+
+/// Helper to read and bump the version in a bundle's manifest
+/// Also creates/updates a test_counter.txt file to verify new file pushes
+/// Returns (old_version, new_version)
+fn bump_manifest_version(bundle_path: &std::path::Path) -> Result<(String, String)> {
+    let manifest_path = bundle_path.join("bundle.toml");
+    let content = fs::read_to_string(&manifest_path)
+        .with_context(|| format!("Failed to read manifest at {}", manifest_path.display()))?;
+    
+    let mut manifest: BundleManifest = toml::from_str(&content)
+        .context("Failed to parse bundle.toml")?;
+    
+    let old_version = manifest.version.clone().unwrap_or_else(|| "0.0.0".to_string());
+    let new_version = bump_patch_version(&old_version);
+    manifest.version = Some(new_version.clone());
+    
+    let new_content = toml::to_string_pretty(&manifest)
+        .context("Failed to serialize manifest")?;
+    fs::write(&manifest_path, new_content)
+        .with_context(|| format!("Failed to write manifest at {}", manifest_path.display()))?;
+    
+    // Also create/update a test counter file to verify new file creation works
+    let counter_path = bundle_path.join("test_counter.txt");
+    let current_count = if counter_path.exists() {
+        fs::read_to_string(&counter_path)
+            .ok()
+            .and_then(|s| s.trim().parse::<u32>().ok())
+            .unwrap_or(0)
+    } else {
+        0
+    };
+    fs::write(&counter_path, format!("{}\n", current_count + 1))?;
+    
+    Ok((old_version, new_version))
 }
 
 #[test]
@@ -501,7 +514,7 @@ fn test_push_counter_to_real_repo() -> Result<()> {
 
     create_bundle_manifest(
         &design_dir,
-        Some("Real push test - counter.txt only"),
+        Some("Real push test - version bump"),
         None,
         bundles,
     )?;
@@ -522,31 +535,17 @@ fn test_push_counter_to_real_repo() -> Result<()> {
     // Configure git user
     configure_git_user(&bundle_path)?;
 
-    // Step 4: Read current counter.txt and bump version
-    let counter_path = bundle_path.join("counter.txt");
-    let current_content = if counter_path.exists() {
-        fs::read_to_string(&counter_path)?
-    } else {
-        "version=0.0.0\ncount=0\n".to_string()
-    };
-
-    let current_version = read_counter_version(&current_content);
-    let current_count = read_counter_value(&current_content);
-    let new_version = bump_patch_version(&current_version);
-    let new_count = current_count + 1;
-
+    // Step 4: Bump version in the bundle's manifest
+    let (old_version, new_version) = bump_manifest_version(&bundle_path)?;
     println!(
-        "Updating counter.txt: version {} -> {}, count {} -> {}",
-        current_version, new_version, current_count, new_count
+        "Bumping manifest version: {} -> {}",
+        old_version, new_version
     );
 
-    let new_content = format!("version={}\ncount={}\n", new_version, new_count);
-    fs::write(&counter_path, &new_content)?;
-
     // Step 5: Run fpm push
-    println!("Pushing counter.txt update to real GitHub repo");
+    println!("Pushing manifest version update to real GitHub repo");
     let push_output = run_fpm(
-        &["push", "-m", &format!("fpm test: Bump counter to {}", new_version)],
+        &["push", "-m", &format!("fpm test: Bump version to {}", new_version)],
         &design_dir,
     )?;
     let push_stdout = String::from_utf8_lossy(&push_output.stdout);
@@ -560,7 +559,7 @@ fn test_push_counter_to_real_repo() -> Result<()> {
             push_stdout.contains("Pushed") || push_stdout.contains("✓"),
             "Should indicate push success"
         );
-        println!("✓ Successfully pushed counter.txt to {}", EXAMPLE_1_REPO);
+        println!("✓ Successfully pushed version {} to {}", new_version, EXAMPLE_1_REPO);
     } else {
         // Expected to fail if no push access
         let stderr_lower = push_stderr.to_lowercase();
@@ -661,7 +660,7 @@ fn test_push_nested_bundles_to_real_repos() -> Result<()> {
     configure_git_user(&ui_components_path)?;
     configure_git_user(&base_styles_path)?;
 
-    // Step 4: Update counter.txt in all bundles
+    // Step 4: Bump version in all bundle manifests
     let bundle_paths = [
         ("ui-assets", &ui_assets_path),
         ("ui-components", &ui_components_path),
@@ -669,31 +668,17 @@ fn test_push_nested_bundles_to_real_repos() -> Result<()> {
     ];
 
     for (name, path) in &bundle_paths {
-        let counter_path = path.join("counter.txt");
-        let current_content = if counter_path.exists() {
-            fs::read_to_string(&counter_path)?
-        } else {
-            "version=0.0.0\ncount=0\n".to_string()
-        };
-
-        let current_version = read_counter_version(&current_content);
-        let current_count = read_counter_value(&current_content);
-        let new_version = bump_patch_version(&current_version);
-        let new_count = current_count + 1;
-
+        let (old_version, new_version) = bump_manifest_version(path)?;
         println!(
-            "Updating {}/counter.txt: version {} -> {}, count {} -> {}",
-            name, current_version, new_version, current_count, new_count
+            "Bumping {}/bundle.toml version: {} -> {}",
+            name, old_version, new_version
         );
-
-        let new_content = format!("version={}\ncount={}\n", new_version, new_count);
-        fs::write(&counter_path, &new_content)?;
     }
 
     // Step 5: Run fpm push - should push all 3 bundles (including nested)
-    println!("Pushing counter.txt updates to all real GitHub repos");
+    println!("Pushing manifest version updates to all real GitHub repos");
     let push_output = run_fpm(
-        &["push", "-m", "fpm test: Bump counters (nested push test)"],
+        &["push", "-m", "fpm test: Bump versions (nested push test)"],
         &design_dir,
     )?;
     let push_stdout = String::from_utf8_lossy(&push_output.stdout);

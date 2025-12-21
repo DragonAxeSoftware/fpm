@@ -3,6 +3,7 @@
 
 fpm_version = "0.1.0"
 identifier = "fpm-bundle"
+version = "1.0.0"
 description = "UI components library with nested dependency"
 
 [bundles.base-styles]

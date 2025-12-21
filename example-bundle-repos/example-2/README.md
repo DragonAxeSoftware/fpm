@@ -11,3 +11,7 @@ This bundle depends on:
 
 - `components/button.css` - Button styles
 - `components/card.css` - Card container styles
+
+## Version Tracking
+
+The `version` field in `bundle.toml` is used by fpm integration tests to verify push functionality. It gets incremented automatically during test runs.
