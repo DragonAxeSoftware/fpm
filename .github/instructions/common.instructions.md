@@ -48,7 +48,13 @@ Some script use python. Use the scripts at scripts/\_setup_dev_env\* to setup a 
 
 ## Devops
 
-Devops script are found in the scripts/devops folder. These can be used to setup the development environment, run tests, or deploy the application.
+Devops scripts are found in the scripts/devops folder. These can be used to setup the development environment, run tests, or deploy the application.
+
+GitHub Actions workflows are in `.github/workflows/`:
+- `ci.yml` - CI workflow (manual trigger via workflow_dispatch)
+- `release.yml` - Release workflow triggered by version tags (e.g., `v0.1.0`)
+
+For devops-specific tasks like CI/CD, local pipeline testing, and Docker usage, read `.github/instructions/devops.md`.
 
 ## Documentation
 
@@ -73,3 +79,5 @@ https://github.com/DragonAxeSoftware/qrs-core-rust
 Instruction files can be found. Don't read them unless needed.
 
 - Profiling: .github/instructions/profiling.md
+- Devops/CI: .github/instructions/devops.md
+- Gherkin specs: .github/instructions/gherkin.md
