@@ -11,7 +11,7 @@ use std::sync::RwLock;
 
 use crate::config::save_manifest;
 use crate::git::GitOperations;
-use crate::types::{BundleDependency, BundleManifest, GITF2_IDENTIFIER};
+use crate::types::{BundleDependency, BundleManifest, FPM_IDENTIFIER};
 
 /// Content for a mock bundle
 pub struct MockBundleContent {
@@ -123,8 +123,8 @@ impl MockGitOperations {
         
         // Create bundle.toml manifest
         let manifest = BundleManifest {
-            gitf2_version: "0.1.0".to_string(),
-            identifier: GITF2_IDENTIFIER.to_string(),
+            fpm_version: "0.1.0".to_string(),
+            identifier: FPM_IDENTIFIER.to_string(),
             description: Some(registration.content.description.clone()),
             root: None,
             bundles: registration.nested_bundles.clone(),
@@ -171,8 +171,8 @@ impl GitOperations for MockGitOperations {
             fs::create_dir_all(path)?;
             
             let manifest = BundleManifest {
-                gitf2_version: "0.1.0".to_string(),
-                identifier: GITF2_IDENTIFIER.to_string(),
+                fpm_version: "0.1.0".to_string(),
+                identifier: FPM_IDENTIFIER.to_string(),
                 description: Some(format!("Mock bundle from {}", url)),
                 root: None,
                 bundles: HashMap::new(),
@@ -233,7 +233,7 @@ mod tests {
     fn test_mock_git_clone_records_operation() {
         let mock = MockGitOperations::new();
         
-        let temp_dir = std::env::temp_dir().join("gitf2_mock_test");
+        let temp_dir = std::env::temp_dir().join("fpm_mock_test");
         let _ = fs::remove_dir_all(&temp_dir);
         
         mock.clone_repository(
@@ -264,7 +264,7 @@ mod tests {
             },
         );
         
-        let temp_dir = std::env::temp_dir().join("gitf2_mock_manifest_test");
+        let temp_dir = std::env::temp_dir().join("fpm_mock_manifest_test");
         let _ = fs::remove_dir_all(&temp_dir);
         
         mock.clone_repository(

@@ -2,25 +2,25 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-/// The gitf2 manifest file identifier
-pub const GITF2_IDENTIFIER: &str = "gitf2-bundle";
+/// The fpm manifest file identifier
+pub const FPM_IDENTIFIER: &str = "fpm-bundle";
 
 /// Default branch name for git operations
 pub const DEFAULT_BRANCH: &str = "main";
 
-/// Default remote name for gitf2 operations
-pub const DEFAULT_REMOTE: &str = "gitf2";
+/// Default remote name for fpm operations
+pub const DEFAULT_REMOTE: &str = "fpm";
 
 /// Directory name where bundles are stored
-pub const BUNDLE_DIR: &str = ".gitf2";
+pub const BUNDLE_DIR: &str = ".fpm";
 
 /// The bundle manifest structure (bundle.toml)
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct BundleManifest {
-    /// The gitf2 version that created this manifest
-    pub gitf2_version: String,
+    /// The fpm version that created this manifest
+    pub fpm_version: String,
 
-    /// Identifier that marks this as a gitf2 bundle file
+    /// Identifier that marks this as a fpm bundle file
     #[serde(default = "default_identifier")]
     pub identifier: String,
 
@@ -39,22 +39,22 @@ pub struct BundleManifest {
 }
 
 fn default_identifier() -> String {
-    GITF2_IDENTIFIER.to_string()
+    FPM_IDENTIFIER.to_string()
 }
 
 impl BundleManifest {
-    pub fn new(gitf2_version: &str) -> Self {
+    pub fn new(fpm_version: &str) -> Self {
         Self {
-            gitf2_version: gitf2_version.to_string(),
-            identifier: GITF2_IDENTIFIER.to_string(),
+            fpm_version: fpm_version.to_string(),
+            identifier: FPM_IDENTIFIER.to_string(),
             description: None,
             root: None,
             bundles: HashMap::new(),
         }
     }
 
-    pub fn is_valid_gitf2_manifest(&self) -> bool {
-        self.identifier == GITF2_IDENTIFIER
+    pub fn is_valid_fpm_manifest(&self) -> bool {
+        self.identifier == FPM_IDENTIFIER
     }
 
     pub fn is_source_bundle(&self) -> bool {
@@ -143,15 +143,15 @@ mod unit_tests {
         let manifest = BundleManifest::new("0.1.0");
         let toml_str = toml::to_string_pretty(&manifest).unwrap();
         
-        assert!(toml_str.contains("gitf2_version"));
-        assert!(toml_str.contains("gitf2-bundle"));
+        assert!(toml_str.contains("fpm_version"));
+        assert!(toml_str.contains("fpm-bundle"));
     }
 
     #[test]
     fn test_manifest_deserialization() {
         let toml_str = r#"
-            gitf2_version = "0.1.0"
-            identifier = "gitf2-bundle"
+            fpm_version = "0.1.0"
+            identifier = "fpm-bundle"
             description = "Test bundle"
             
             [bundles.my-bundle]
@@ -162,8 +162,8 @@ mod unit_tests {
         
         let manifest: BundleManifest = toml::from_str(toml_str).unwrap();
         
-        assert_eq!(manifest.gitf2_version, "0.1.0");
-        assert!(manifest.is_valid_gitf2_manifest());
+        assert_eq!(manifest.fpm_version, "0.1.0");
+        assert!(manifest.is_valid_fpm_manifest());
         assert_eq!(manifest.description, Some("Test bundle".to_string()));
         assert!(manifest.bundles.contains_key("my-bundle"));
     }

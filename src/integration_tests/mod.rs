@@ -1,4 +1,4 @@
-//! Integration tests for gitf2
+//! Integration tests for fpm
 //!
 //! These tests run with real external dependencies (actual git repositories).
 //! They require:
@@ -12,8 +12,8 @@ use std::collections::HashMap;
 use std::fs;
 
 use crate::test_utils::{
-    cleanup_test_env, create_bundle_manifest, create_sample_project, get_gitf2_binary_path,
-    is_git_available, run_gitf2, setup_test_env,
+    cleanup_test_env, create_bundle_manifest, create_sample_project, get_fpm_binary_path,
+    is_git_available, run_fpm, setup_test_env,
 };
 use crate::types::{BundleDependency, BUNDLE_DIR};
 
@@ -44,10 +44,10 @@ fn check_preconditions() -> Result<()> {
         );
     }
 
-    let binary_path = get_gitf2_binary_path();
+    let binary_path = get_fpm_binary_path();
     if !binary_path.exists() {
         anyhow::bail!(
-            "gitf2 binary not found at {:?}. \
+            "fpm binary not found at {:?}. \
             Please run 'cargo build' or use the build script at scripts/devops/build.ps1",
             binary_path
         );
@@ -90,9 +90,9 @@ fn test_install_from_real_git_repository() -> Result<()> {
         bundles,
     )?;
 
-    // Step 3: Run gitf2 install command using the real binary
-    println!("Running gitf2 install in {:?}", design_dir);
-    let output = run_gitf2(&["install"], &design_dir)?;
+    // Step 3: Run fpm install command using the real binary
+    println!("Running fpm install in {:?}", design_dir);
+    let output = run_fpm(&["install"], &design_dir)?;
 
     // Print output for debugging
     println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
@@ -101,7 +101,7 @@ fn test_install_from_real_git_repository() -> Result<()> {
     // Step 4: Verify the command succeeded
     assert!(
         output.status.success(),
-        "gitf2 install should succeed. Exit code: {:?}\nstderr: {}",
+        "fpm install should succeed. Exit code: {:?}\nstderr: {}",
         output.status.code(),
         String::from_utf8_lossy(&output.stderr)
     );
@@ -136,11 +136,11 @@ fn test_install_from_real_git_repository() -> Result<()> {
         "Installed bundle should contain assets directory"
     );
 
-    // Step 7: Run gitf2 status command
-    let status_output = run_gitf2(&["status"], &design_dir)?;
+    // Step 7: Run fpm status command
+    let status_output = run_fpm(&["status"], &design_dir)?;
     assert!(
         status_output.status.success(),
-        "gitf2 status should succeed"
+        "fpm status should succeed"
     );
 
     let status_stdout = String::from_utf8_lossy(&status_output.stdout);
@@ -202,11 +202,11 @@ fn test_install_with_specific_branch() -> Result<()> {
         bundles,
     )?;
 
-    let output = run_gitf2(&["install"], &design_dir)?;
+    let output = run_fpm(&["install"], &design_dir)?;
 
     assert!(
         output.status.success(),
-        "gitf2 install with branch should succeed"
+        "fpm install with branch should succeed"
     );
 
     let installed_bundle = design_dir.join(BUNDLE_DIR).join("ui-assets-main");
@@ -244,11 +244,11 @@ fn test_status_shows_correct_state_after_install() -> Result<()> {
     create_bundle_manifest(&design_dir, None, None, bundles)?;
 
     // Install the bundle
-    let install_output = run_gitf2(&["install"], &design_dir)?;
+    let install_output = run_fpm(&["install"], &design_dir)?;
     assert!(install_output.status.success(), "Install should succeed");
 
     // Check status
-    let status_output = run_gitf2(&["status"], &design_dir)?;
+    let status_output = run_fpm(&["status"], &design_dir)?;
     assert!(status_output.status.success(), "Status should succeed");
 
     let stdout = String::from_utf8_lossy(&status_output.stdout);
@@ -270,7 +270,7 @@ fn test_status_shows_correct_state_after_install() -> Result<()> {
         fs::write(&installed_readme, "# Modified content\n\nThis was changed locally.")?;
         
         // Check status again - should show unsynced or modified
-        let status_after_modify = run_gitf2(&["status"], &design_dir)?;
+        let status_after_modify = run_fpm(&["status"], &design_dir)?;
         let stdout_after = String::from_utf8_lossy(&status_after_modify.stdout);
         
         println!("Status after modification:\n{}", stdout_after);
@@ -326,15 +326,15 @@ fn test_install_nested_bundles() -> Result<()> {
         bundles,
     )?;
 
-    println!("Running gitf2 install for nested bundles in {:?}", design_dir);
-    let output = run_gitf2(&["install"], &design_dir)?;
+    println!("Running fpm install for nested bundles in {:?}", design_dir);
+    let output = run_fpm(&["install"], &design_dir)?;
 
     println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
     println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
 
     assert!(
         output.status.success(),
-        "gitf2 install with nested bundles should succeed. Exit code: {:?}\nstderr: {}",
+        "fpm install with nested bundles should succeed. Exit code: {:?}\nstderr: {}",
         output.status.code(),
         String::from_utf8_lossy(&output.stderr)
     );
@@ -406,7 +406,7 @@ fn test_install_nested_bundles() -> Result<()> {
     );
 
     // Run status and verify all bundles show up
-    let status_output = run_gitf2(&["status"], &design_dir)?;
+    let status_output = run_fpm(&["status"], &design_dir)?;
     assert!(status_output.status.success(), "Status should succeed");
 
     let status_stdout = String::from_utf8_lossy(&status_output.stdout);
@@ -508,7 +508,7 @@ fn test_push_counter_to_real_repo() -> Result<()> {
 
     // Step 3: Install the bundle
     println!("Installing ui-assets from real GitHub repo");
-    let install_output = run_gitf2(&["install"], &design_dir)?;
+    let install_output = run_fpm(&["install"], &design_dir)?;
     assert!(
         install_output.status.success(),
         "Install should succeed: {}",
@@ -543,10 +543,10 @@ fn test_push_counter_to_real_repo() -> Result<()> {
     let new_content = format!("version={}\ncount={}\n", new_version, new_count);
     fs::write(&counter_path, &new_content)?;
 
-    // Step 5: Run gitf2 push
+    // Step 5: Run fpm push
     println!("Pushing counter.txt update to real GitHub repo");
-    let push_output = run_gitf2(
-        &["push", "-m", &format!("gitf2 test: Bump counter to {}", new_version)],
+    let push_output = run_fpm(
+        &["push", "-m", &format!("fpm test: Bump counter to {}", new_version)],
         &design_dir,
     )?;
     let push_stdout = String::from_utf8_lossy(&push_output.stdout);
@@ -634,7 +634,7 @@ fn test_push_nested_bundles_to_real_repos() -> Result<()> {
 
     // Step 3: Install all bundles (including nested base-styles from example-3)
     println!("Installing bundles from real GitHub repos");
-    let install_output = run_gitf2(&["install"], &design_dir)?;
+    let install_output = run_fpm(&["install"], &design_dir)?;
     assert!(
         install_output.status.success(),
         "Install should succeed: {}",
@@ -690,10 +690,10 @@ fn test_push_nested_bundles_to_real_repos() -> Result<()> {
         fs::write(&counter_path, &new_content)?;
     }
 
-    // Step 5: Run gitf2 push - should push all 3 bundles (including nested)
+    // Step 5: Run fpm push - should push all 3 bundles (including nested)
     println!("Pushing counter.txt updates to all real GitHub repos");
-    let push_output = run_gitf2(
-        &["push", "-m", "gitf2 test: Bump counters (nested push test)"],
+    let push_output = run_fpm(
+        &["push", "-m", "fpm test: Bump counters (nested push test)"],
         &design_dir,
     )?;
     let push_stdout = String::from_utf8_lossy(&push_output.stdout);

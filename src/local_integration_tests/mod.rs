@@ -1,4 +1,4 @@
-//! Local integration tests for gitf2
+//! Local integration tests for fpm
 //!
 //! These tests run with local git repositories (no network required).
 //! They test the same functionality as integration tests but use local
@@ -17,8 +17,8 @@ use std::collections::HashMap;
 use std::fs;
 
 use crate::test_utils::{
-    cleanup_test_env, create_bundle_manifest, create_sample_project, get_gitf2_binary_path,
-    is_git_available, run_gitf2, setup_test_env,
+    cleanup_test_env, create_bundle_manifest, create_sample_project, get_fpm_binary_path,
+    is_git_available, run_fpm, setup_test_env,
 };
 use crate::types::{BundleDependency, BUNDLE_DIR};
 
@@ -33,10 +33,10 @@ fn check_preconditions() -> Result<()> {
         );
     }
 
-    let binary_path = get_gitf2_binary_path();
+    let binary_path = get_fpm_binary_path();
     if !binary_path.exists() {
         anyhow::bail!(
-            "gitf2 binary not found at {:?}. \
+            "fpm binary not found at {:?}. \
             Please run 'cargo build' first.",
             binary_path
         );
@@ -159,8 +159,8 @@ fn test_push_bundle_changes_local() -> Result<()> {
     let remote_dir = test_dir.join("remote");
     let setup_clone = test_dir.join("setup_clone");
 
-    let bundle_manifest = r#"gitf2_version = "0.1.0"
-identifier = "gitf2-bundle"
+    let bundle_manifest = r#"fpm_version = "0.1.0"
+identifier = "fpm-bundle"
 description = "Test bundle for push command"
 
 [bundles]
@@ -189,7 +189,7 @@ description = "Test bundle for push command"
 
     // Step 3: Install the bundle
     println!("Installing bundle from local 'remote'");
-    let install_output = run_gitf2(&["install"], &design_dir)?;
+    let install_output = run_fpm(&["install"], &design_dir)?;
     println!(
         "Install stdout: {}",
         String::from_utf8_lossy(&install_output.stdout)
@@ -219,9 +219,9 @@ description = "Test bundle for push command"
     let updated_counter = "version=0.0.2\ncount=1\n";
     fs::write(bundle_path.join("counter.txt"), updated_counter)?;
 
-    // Step 5: Run gitf2 push
+    // Step 5: Run fpm push
     println!("Pushing bundle changes");
-    let push_output = run_gitf2(&["push", "-m", "Bump counter to 0.0.2"], &design_dir)?;
+    let push_output = run_fpm(&["push", "-m", "Bump counter to 0.0.2"], &design_dir)?;
     let push_stdout = String::from_utf8_lossy(&push_output.stdout);
     let push_stderr = String::from_utf8_lossy(&push_output.stderr);
     println!("Push stdout: {}", push_stdout);
@@ -289,8 +289,8 @@ fn test_push_nested_bundles_local() -> Result<()> {
     let child_remote = test_dir.join("child_remote");
 
     // Setup child bundle
-    let child_manifest = r#"gitf2_version = "0.1.0"
-identifier = "gitf2-bundle"
+    let child_manifest = r#"fpm_version = "0.1.0"
+identifier = "fpm-bundle"
 description = "Child bundle"
 
 [bundles]
@@ -304,8 +304,8 @@ description = "Child bundle"
 
     // Setup parent bundle (depends on child)
     let parent_manifest = format!(
-        r#"gitf2_version = "0.1.0"
-identifier = "gitf2-bundle"
+        r#"fpm_version = "0.1.0"
+identifier = "fpm-bundle"
 description = "Parent bundle with child dependency"
 
 [bundles.child-bundle]
@@ -342,7 +342,7 @@ branch = "main"
     create_bundle_manifest(&design_dir, Some("Nested push test"), None, bundles)?;
 
     // Install bundles
-    let install_output = run_gitf2(&["install"], &design_dir)?;
+    let install_output = run_fpm(&["install"], &design_dir)?;
     assert!(
         install_output.status.success(),
         "Install should succeed: {}",
@@ -367,7 +367,7 @@ branch = "main"
     fs::write(child_path.join("counter.txt"), "child_version=0.0.2\n")?;
 
     // Step 4: Run push - should push both nested bundles
-    let push_output = run_gitf2(&["push", "-m", "Bump to 0.0.2"], &design_dir)?;
+    let push_output = run_fpm(&["push", "-m", "Bump to 0.0.2"], &design_dir)?;
     let push_stdout = String::from_utf8_lossy(&push_output.stdout);
     let push_stderr = String::from_utf8_lossy(&push_output.stderr);
     println!("Push stdout: {}", push_stdout);

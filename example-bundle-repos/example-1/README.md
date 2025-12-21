@@ -19,5 +19,5 @@ git = "https://github.com/example/ui-assets.git"
 Then run:
 
 ```bash
-gitf2 install
+fpm install
 ```

@@ -1,11 +1,11 @@
-# gitf2-example-2: UI Components
+# fpm-example-2: UI Components
 
 A bundle containing reusable UI components.
 
 ## Dependencies
 
 This bundle depends on:
-- **base-styles** (gitf2-example-3): Provides foundational CSS variables and resets
+- **base-styles** (fpm-example-3): Provides foundational CSS variables and resets
 
 ## Contents
 

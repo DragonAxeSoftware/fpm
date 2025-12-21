@@ -1,14 +1,14 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
-/// gitf2 - A file package manager that resembles Git and NPM, but for files in general.
+/// fpm - A file package manager that resembles Git and NPM, but for files in general.
 /// 
 /// Manages file bundles using git repositories as the backend storage.
 #[derive(Parser, Debug)]
-#[command(name = "gitf2")]
+#[command(name = "fpm")]
 #[command(author = "DragonAxe Software")]
 #[command(version)]
-#[command(about = "Git for Files - A file package manager using git as backend")]
+#[command(about = "File Package Manager - A file package manager using git as backend")]
 #[command(long_about = None)]
 pub struct Cli {
     /// Path to the bundle.toml manifest file
@@ -24,7 +24,7 @@ pub enum Commands {
     /// Install bundles from the manifest file
     /// 
     /// Fetches all bundles specified in bundle.toml from their git repositories
-    /// and places them in .gitf2 subdirectories.
+    /// and places them in .fpm subdirectories.
     Install,
 
     /// Publish bundles to their remote repositories

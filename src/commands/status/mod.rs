@@ -116,7 +116,7 @@ pub fn collect_all_statuses(
         });
     }
 
-    // Check all bundles in .gitf2 directory
+    // Check all bundles in .fpm directory
     let bundle_dir = parent_dir.join(BUNDLE_DIR);
     if bundle_dir.exists() {
         collect_bundle_statuses(git_ops.as_ref(), &bundle_dir, 0, &mut entries)?;
@@ -191,7 +191,7 @@ fn collect_bundle_statuses(
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_default();
 
-        // Skip hidden directories except .gitf2
+        // Skip hidden directories except .fpm
         if name.starts_with('.') && name != BUNDLE_DIR {
             continue;
         }

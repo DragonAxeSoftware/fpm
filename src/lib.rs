@@ -1,4 +1,4 @@
-//! gitf2 - Git for Files
+//! fpm - File Package Manager
 //!
 //! A file package manager that resembles Git and NPM, but for files in general.
 //! Manages file bundles using git repositories as the backend storage.

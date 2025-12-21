@@ -45,7 +45,7 @@ pub fn execute_with_git(manifest_path: &Path, git_ops: Arc<dyn GitOperations>) -
 
     let bundle_dir = parent_dir.join(BUNDLE_DIR);
 
-    // Create the .gitf2 directory if it doesn't exist
+    // Create the .fpm directory if it doesn't exist
     if !bundle_dir.exists() {
         fs::create_dir_all(&bundle_dir)
             .with_context(|| format!("Failed to create bundle directory: {}", bundle_dir.display()))?;

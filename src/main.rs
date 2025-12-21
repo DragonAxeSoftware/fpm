@@ -2,8 +2,8 @@ use anyhow::Result;
 use clap::Parser;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use gitf2::cli::{Cli, Commands};
-use gitf2::commands::{install, publish, push, status};
+use fpm::cli::{Cli, Commands};
+use fpm::commands::{install, publish, push, status};
 
 fn main() -> Result<()> {
     tracing_subscriber::registry()

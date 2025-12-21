@@ -8,14 +8,14 @@ The integration tests expect the following public git repository to exist:
 
 | Local Folder | Remote Repository |
 |--------------|-------------------|
-| `example-1/` | https://github.com/<your-org>/gitf2-example-1 |
+| `example-1/` | https://github.com/<your-org>/fpm-example-1 |
 
 ## Setup Instructions
 
 ### 1. Create the Remote Repository
 
 1. Create a new public repository on GitHub (or your preferred git host)
-2. Name it `gitf2-example-1` (or update the URL in `src/integration_tests/mod.rs`)
+2. Name it `fpm-example-1` (or update the URL in `src/integration_tests/mod.rs`)
 
 ### 2. Push the Example Content
 
@@ -27,10 +27,10 @@ git init -b main
 
 # Add all files
 git add .
-git commit -m "Initial commit: example bundle for gitf2 integration tests"
+git commit -m "Initial commit: example bundle for fpm integration tests"
 
 # Add remote and push
-git remote add origin https://github.com/<your-org>/gitf2-example-1.git
+git remote add origin https://github.com/<your-org>/fpm-example-1.git
 git push -u origin main
 ```
 
@@ -46,7 +46,7 @@ Run the integration tests to verify everything is configured correctly:
 
 Each example bundle should contain:
 
-- `bundle.toml` - The gitf2 manifest file
+- `bundle.toml` - The fpm manifest file
 - `README.md` - Bundle documentation
 - `assets/` - Example asset files (icons, styles, etc.)
 

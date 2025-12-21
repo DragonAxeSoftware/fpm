@@ -35,7 +35,7 @@ pub fn execute_with_git(
 
     if !bundle_dir.exists() {
         anyhow::bail!(
-            "No bundles installed. Run 'gitf2 install' first."
+            "No bundles installed. Run 'fpm install' first."
         );
     }
 
@@ -191,7 +191,7 @@ fn push_single_bundle(
     println!("{}{} {}", indent, "Pushing".green(), name);
 
     // Commit all changes
-    let commit_msg = message.unwrap_or("gitf2 push: Update bundle");
+    let commit_msg = message.unwrap_or("fpm push: Update bundle");
     git_ops.commit_all(bundle_path, commit_msg)?;
 
     // Push to origin (the cloned remote)

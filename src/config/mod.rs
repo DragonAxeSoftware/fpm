@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
 
-use crate::types::{BundleManifest, GITF2_IDENTIFIER};
+use crate::types::{BundleManifest, FPM_IDENTIFIER};
 
 /// Loads and parses a bundle.toml manifest file
 pub fn load_manifest(path: &Path) -> Result<BundleManifest> {
@@ -17,10 +17,10 @@ pub fn parse_manifest(content: &str) -> Result<BundleManifest> {
     let manifest: BundleManifest = toml::from_str(content)
         .context("Failed to parse bundle.toml")?;
     
-    if !manifest.is_valid_gitf2_manifest() {
+    if !manifest.is_valid_fpm_manifest() {
         anyhow::bail!(
-            "Invalid gitf2 manifest: identifier must be '{}', found '{}'",
-            GITF2_IDENTIFIER,
+            "Invalid fpm manifest: identifier must be '{}', found '{}'",
+            FPM_IDENTIFIER,
             manifest.identifier
         );
     }
@@ -62,8 +62,8 @@ mod unit_tests {
     #[test]
     fn test_parse_valid_manifest() {
         let content = r#"
-            gitf2_version = "0.1.0"
-            identifier = "gitf2-bundle"
+            fpm_version = "0.1.0"
+            identifier = "fpm-bundle"
             description = "A test bundle"
             
             [bundles.design-from-martha]
@@ -73,7 +73,7 @@ mod unit_tests {
         "#;
         
         let manifest = parse_manifest(content).unwrap();
-        assert_eq!(manifest.gitf2_version, "0.1.0");
+        assert_eq!(manifest.fpm_version, "0.1.0");
         assert_eq!(manifest.description, Some("A test bundle".to_string()));
         assert!(manifest.bundles.contains_key("design-from-martha"));
     }
@@ -81,13 +81,13 @@ mod unit_tests {
     #[test]
     fn test_parse_invalid_identifier() {
         let content = r#"
-            gitf2_version = "0.1.0"
+            fpm_version = "0.1.0"
             identifier = "wrong-identifier"
         "#;
         
         let result = parse_manifest(content);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Invalid gitf2 manifest"));
+        assert!(result.unwrap_err().to_string().contains("Invalid fpm manifest"));
     }
 
     #[test]

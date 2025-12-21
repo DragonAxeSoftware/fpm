@@ -1,4 +1,4 @@
-//! Unit tests for gitf2
+//! Unit tests for fpm
 //!
 //! These tests run without external dependencies using mock implementations.
 //! Test files are placed at <workspace>/.tests/unit directory.
@@ -65,7 +65,7 @@ fn test_full_install_workflow() -> Result<()> {
     
     // Step 3: Verify manifest was created correctly
     let loaded_manifest = load_manifest(&manifest_path)?;
-    assert!(loaded_manifest.is_valid_gitf2_manifest());
+    assert!(loaded_manifest.is_valid_fpm_manifest());
     assert_eq!(loaded_manifest.bundles.len(), 2);
     assert!(loaded_manifest.bundles.contains_key("design-from-martha"));
     assert!(loaded_manifest.bundles.contains_key("shared-icons"));
@@ -184,7 +184,7 @@ fn test_nested_bundles_workflow() -> Result<()> {
     
     assert!(ui_kit_dir.exists(), "UI kit should be installed");
     
-    // The nested bundle should be in ui-kit/.gitf2/base-styles
+    // The nested bundle should be in ui-kit/.fpm/base-styles
     let nested_bundle_dir = ui_kit_dir.join(BUNDLE_DIR).join("base-styles");
     assert!(nested_bundle_dir.exists(), "Nested bundle should be installed");
     

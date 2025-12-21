@@ -147,7 +147,7 @@ impl GitOperations for Git2Operations {
         
         // Get signature
         let sig = repo.signature()
-            .or_else(|_| git2::Signature::now("gitf2", "gitf2@local"))?;
+            .or_else(|_| git2::Signature::now("fpm", "fpm@local"))?;
         
         // Get parent commit if exists
         let parent = repo.head().ok().and_then(|h| h.peel_to_commit().ok());

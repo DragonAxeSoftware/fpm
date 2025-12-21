@@ -64,7 +64,7 @@ pub fn execute_with_git(manifest_path: &Path, git_ops: Arc<dyn GitOperations>) -
     // This could be stored in a separate field or inferred
     let remote_url = get_publish_remote(&manifest_path, git_ops.as_ref())?;
 
-    publish_bundle(git_ops.as_ref(), &root_dir, &remote_url, &manifest.gitf2_version)?;
+    publish_bundle(git_ops.as_ref(), &root_dir, &remote_url, &manifest.fpm_version)?;
 
     println!("{}", "Published successfully!".green().bold());
     Ok(())
@@ -75,7 +75,7 @@ fn get_publish_remote(manifest_path: &Path, git_ops: &dyn GitOperations) -> Resu
     let parent = manifest_path.parent().context("Invalid manifest path")?;
     
     if git_ops.is_repository(parent) {
-        // Try to get the gitf2 remote URL
+        // Try to get the fpm remote URL
         if let Ok(repo) = git2::Repository::open(parent) {
             if let Ok(remote) = repo.find_remote(DEFAULT_REMOTE) {
                 if let Some(url) = remote.url() {
@@ -109,7 +109,7 @@ fn publish_bundle(
     init_bundle_for_publish(git_ops, root_dir, remote_url)?;
 
     // Commit all changes
-    let commit_message = format!("gitf2 publish v{}", version);
+    let commit_message = format!("fpm publish v{}", version);
     git_ops.commit_all(root_dir, &commit_message)?;
 
     // Push to remote

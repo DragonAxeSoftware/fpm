@@ -1,11 +1,11 @@
-# gitf2 Bundle Manifest Example
-# This file defines the bundles to be fetched by gitf2
+# fpm Bundle Manifest Example
+# This file defines the bundles to be fetched by fpm
 
-# Required: The gitf2 version that created this manifest
-gitf2_version = "0.1.0"
+# Required: The fpm version that created this manifest
+fpm_version = "0.1.0"
 
-# Required: Identifier marking this as a gitf2 bundle file
-identifier = "gitf2-bundle"
+# Required: Identifier marking this as a fpm bundle file
+identifier = "fpm-bundle"
 
 # Optional: Description of what this bundle is about
 description = "Example bundle configuration for demonstration purposes"
@@ -15,7 +15,7 @@ description = "Example bundle configuration for demonstration purposes"
 # root = "artifacts"
 
 # Bundle dependencies
-# Each bundle is fetched from its git repository and placed in .gitf2/<bundle-name>
+# Each bundle is fetched from its git repository and placed in .fpm/<bundle-name>
 
 [bundles.example-assets]
 version = "1.0.0"

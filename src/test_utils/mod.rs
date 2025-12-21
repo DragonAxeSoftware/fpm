@@ -11,7 +11,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::config::save_manifest;
-use crate::types::{BundleDependency, BundleManifest, GITF2_IDENTIFIER};
+use crate::types::{BundleDependency, BundleManifest, FPM_IDENTIFIER};
 
 /// Gets the test directory path for a given test category
 pub fn get_test_dir(category: &str) -> PathBuf {
@@ -42,7 +42,7 @@ pub fn cleanup_test_env(category: &str, test_name: &str) -> Result<()> {
     Ok(())
 }
 
-/// Creates a sample project structure with non-gitf2 files
+/// Creates a sample project structure with non-fpm files
 pub fn create_sample_project(base_dir: &Path) -> Result<()> {
     // Create typical project structure
     let src_dir = base_dir.join("src");
@@ -54,7 +54,7 @@ pub fn create_sample_project(base_dir: &Path) -> Result<()> {
         src_dir.join("main.rs"),
         "fn main() {\n    println!(\"Hello!\");\n}",
     )?;
-    fs::write(base_dir.join(".gitignore"), "/target\n.gitf2/")?;
+    fs::write(base_dir.join(".gitignore"), "/target\n.fpm/")?;
 
     // Create a design directory where we'll add bundles
     let design_dir = src_dir.join("design");
@@ -72,8 +72,8 @@ pub fn create_bundle_manifest(
     bundles: HashMap<String, BundleDependency>,
 ) -> Result<PathBuf> {
     let manifest = BundleManifest {
-        gitf2_version: "0.1.0".to_string(),
-        identifier: GITF2_IDENTIFIER.to_string(),
+        fpm_version: "0.1.0".to_string(),
+        identifier: FPM_IDENTIFIER.to_string(),
         description: description.map(String::from),
         root: root.map(PathBuf::from),
         bundles,
@@ -94,28 +94,28 @@ pub fn is_git_available() -> bool {
         .unwrap_or(false)
 }
 
-/// Gets the path to the gitf2 binary
-pub fn get_gitf2_binary_path() -> PathBuf {
+/// Gets the path to the fpm binary
+pub fn get_fpm_binary_path() -> PathBuf {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     path.push("target");
     path.push("debug");
     
     #[cfg(windows)]
-    path.push("gitf2.exe");
+    path.push("fpm.exe");
     
     #[cfg(not(windows))]
-    path.push("gitf2");
+    path.push("fpm");
     
     path
 }
 
-/// Runs the gitf2 binary with the given arguments
-pub fn run_gitf2(args: &[&str], working_dir: &Path) -> Result<std::process::Output> {
-    let binary_path = get_gitf2_binary_path();
+/// Runs the fpm binary with the given arguments
+pub fn run_fpm(args: &[&str], working_dir: &Path) -> Result<std::process::Output> {
+    let binary_path = get_fpm_binary_path();
     
     if !binary_path.exists() {
         anyhow::bail!(
-            "gitf2 binary not found at {:?}. Run 'cargo build' first.",
+            "fpm binary not found at {:?}. Run 'cargo build' first.",
             binary_path
         );
     }

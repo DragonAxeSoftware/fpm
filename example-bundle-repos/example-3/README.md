@@ -1,4 +1,4 @@
-# gitf2-example-3: Base Styles
+# fpm-example-3: Base Styles
 
 A foundational bundle providing CSS variables and reset styles.
 
