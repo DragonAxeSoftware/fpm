@@ -36,9 +36,10 @@ pub enum Commands {
     /// Push changes in installed bundles back to their source repositories
     /// 
     /// Commits and pushes local modifications made to installed bundles.
-    /// Requires write access (credentials) to the source repository.
+    /// Starts from the current manifest and recursively pushes all nested bundles
+    /// (deepest first, then parent bundles). Requires write access to the source repositories.
     Push {
-        /// Name of the bundle to push (pushes all if not specified)
+        /// Name of a specific bundle to push (pushes all bundles if not specified)
         #[arg(short, long)]
         bundle: Option<String>,
 
