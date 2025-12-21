@@ -20,9 +20,14 @@ use crate::types::{BundleDependency, BUNDLE_DIR};
 
 const TEST_CATEGORY: &str = "integration";
 
-/// The URL of the test repository containing example-1 bundle
-/// This should be a real git repository that you control
-const EXAMPLE_BUNDLE_REPO: &str = "https://github.com/DragonAxeSoftware/gitf2-example-1.git";
+/// The HTTPS URL of the test repository (for public access without SSH key)
+const EXAMPLE_BUNDLE_REPO_HTTPS: &str = "https://github.com/DragonAxeSoftware/gitf2-example-1.git";
+
+/// The SSH URL of the test repository (for SSH authentication)
+/// NOTE: SSH authentication is not fully implemented in tests yet.
+/// TODO: Load SSH key path from environment variable or .env file when implementing SSH tests.
+#[allow(dead_code)]
+const EXAMPLE_BUNDLE_REPO_SSH: &str = "git@github.com:DragonAxeSoftware/gitf2-example-1.git";
 
 /// Checks preconditions before running integration tests
 fn check_preconditions() -> Result<()> {
@@ -57,7 +62,7 @@ fn test_install_from_real_git_repository() -> Result<()> {
     // Step 1: Create a sample project structure
     create_sample_project(&test_dir)?;
 
-    // Step 2: Create a bundle.toml that references a real git repository
+    // Step 2: Create a bundle.toml that references a real git repository via HTTPS
     let design_dir = test_dir.join("src").join("design");
     let mut bundles = HashMap::new();
 
@@ -65,9 +70,10 @@ fn test_install_from_real_git_repository() -> Result<()> {
         "ui-assets".to_string(),
         BundleDependency {
             version: "1.0.0".to_string(),
-            git: EXAMPLE_BUNDLE_REPO.to_string(),
+            git: EXAMPLE_BUNDLE_REPO_HTTPS.to_string(),
             path: None,
             branch: Some("main".to_string()),
+            ssh_key: None,
         },
     );
 
@@ -172,14 +178,15 @@ fn test_install_with_specific_branch() -> Result<()> {
     let design_dir = test_dir.join("src").join("design");
     let mut bundles = HashMap::new();
 
-    // Install from a specific branch
+    // Install from a specific branch using HTTPS
     bundles.insert(
         "ui-assets-main".to_string(),
         BundleDependency {
             version: "1.0.0".to_string(),
-            git: EXAMPLE_BUNDLE_REPO.to_string(),
+            git: EXAMPLE_BUNDLE_REPO_HTTPS.to_string(),
             path: None,
             branch: Some("main".to_string()),
+            ssh_key: None,
         },
     );
 
@@ -223,9 +230,10 @@ fn test_status_shows_correct_state_after_install() -> Result<()> {
         "ui-assets".to_string(),
         BundleDependency {
             version: "1.0.0".to_string(),
-            git: EXAMPLE_BUNDLE_REPO.to_string(),
+            git: EXAMPLE_BUNDLE_REPO_HTTPS.to_string(),
             path: None,
             branch: Some("main".to_string()),
+            ssh_key: None,
         },
     );
 

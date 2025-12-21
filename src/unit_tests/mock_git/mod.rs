@@ -142,7 +142,13 @@ impl MockGitOperations {
 }
 
 impl GitOperations for MockGitOperations {
-    fn clone_repository(&self, url: &str, path: &Path, branch: &str) -> Result<()> {
+    fn clone_repository(
+        &self,
+        url: &str,
+        path: &Path,
+        branch: &str,
+        _ssh_key: Option<&Path>,
+    ) -> Result<()> {
         // Record the clone operation
         {
             let mut cloned = self._cloned_repos.write().unwrap();
@@ -234,6 +240,7 @@ mod tests {
             "https://github.com/test/repo.git",
             &temp_dir,
             "main",
+            None,
         ).unwrap();
         
         let cloned = mock.get_cloned_repos();
@@ -264,6 +271,7 @@ mod tests {
             "https://github.com/test/bundle.git",
             &temp_dir,
             "main",
+            None,
         ).unwrap();
         
         assert!(temp_dir.join("bundle.toml").exists());

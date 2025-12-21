@@ -78,11 +78,25 @@ pub struct BundleDependency {
     /// Optional branch to fetch from (defaults to "main")
     #[serde(default)]
     pub branch: Option<String>,
+
+    /// Optional path to SSH private key for authentication.
+    /// If provided, SSH authentication will be used instead of HTTPS.
+    /// The path can be absolute or relative to the user's home directory (e.g., "~/.ssh/id_rsa").
+    /// 
+    /// NOTE: SSH authentication is implemented but not fully tested yet.
+    /// TODO: Add integration tests with SSH key from environment variable.
+    #[serde(default)]
+    pub ssh_key: Option<PathBuf>,
 }
 
 impl BundleDependency {
     pub fn branch(&self) -> &str {
         self.branch.as_deref().unwrap_or(DEFAULT_BRANCH)
+    }
+
+    /// Returns true if this dependency should use SSH authentication
+    pub fn use_ssh(&self) -> bool {
+        self.ssh_key.is_some()
     }
 }
 

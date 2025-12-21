@@ -41,6 +41,7 @@ fn test_full_install_workflow() -> Result<()> {
             git: "https://github.com/martha/designs.git".to_string(),
             path: Some(PathBuf::from("assets")),
             branch: None,
+            ssh_key: None,
         },
     );
     
@@ -51,6 +52,7 @@ fn test_full_install_workflow() -> Result<()> {
             git: "git@github.com:company/icons.git".to_string(),
             path: None,
             branch: Some("main".to_string()),
+            ssh_key: None,
         },
     );
     
@@ -133,6 +135,7 @@ fn test_nested_bundles_workflow() -> Result<()> {
             git: "https://github.com/example/ui-kit.git".to_string(),
             path: None,
             branch: None,
+            ssh_key: None,
         },
     );
     
@@ -155,6 +158,7 @@ fn test_nested_bundles_workflow() -> Result<()> {
             git: "https://github.com/example/base-styles.git".to_string(),
             path: None,
             branch: None,
+            ssh_key: None,
         },
     );
     
@@ -208,6 +212,7 @@ fn test_duplicate_bundle_names_error() -> Result<()> {
             git: "https://github.com/example/bundle.git".to_string(),
             path: None,
             branch: None,
+            ssh_key: None,
         },
     );
     

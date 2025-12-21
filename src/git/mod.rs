@@ -10,7 +10,13 @@ use crate::types::{BundleDependency, DEFAULT_BRANCH, DEFAULT_REMOTE};
 
 /// Trait for git operations - allows mocking in tests
 pub trait GitOperations: Send + Sync {
-    fn clone_repository(&self, url: &str, path: &Path, branch: &str) -> Result<()>;
+    fn clone_repository(
+        &self,
+        url: &str,
+        path: &Path,
+        branch: &str,
+        ssh_key: Option<&Path>,
+    ) -> Result<()>;
     fn fetch_repository(&self, path: &Path, branch: &str) -> Result<()>;
     fn init_repository(&self, path: &Path) -> Result<()>;
     fn add_remote(&self, path: &Path, name: &str, url: &str) -> Result<()>;
@@ -51,7 +57,15 @@ impl Default for Git2Operations {
 }
 
 impl GitOperations for Git2Operations {
-    fn clone_repository(&self, url: &str, path: &Path, branch: &str) -> Result<()> {
+    fn clone_repository(
+        &self,
+        url: &str,
+        path: &Path,
+        branch: &str,
+        _ssh_key: Option<&Path>,
+    ) -> Result<()> {
+        // Note: Git2Operations currently ignores ssh_key parameter.
+        // For SSH support with custom keys, use GitCliOperations instead.
         info!("Cloning {} to {}", url, path.display());
         
         let callbacks = Self::get_callbacks();
@@ -190,11 +204,34 @@ impl GitCliOperations {
     }
 
     fn run_git(&self, args: &[&str], working_dir: Option<&Path>) -> Result<()> {
+        self.run_git_with_ssh_key(args, working_dir, None)
+    }
+
+    /// Runs a git command with optional SSH key authentication.
+    /// When ssh_key is provided, sets GIT_SSH_COMMAND to use the specified key.
+    fn run_git_with_ssh_key(
+        &self,
+        args: &[&str],
+        working_dir: Option<&Path>,
+        ssh_key: Option<&Path>,
+    ) -> Result<()> {
         let mut cmd = std::process::Command::new("git");
         cmd.args(args);
         
         if let Some(dir) = working_dir {
             cmd.current_dir(dir);
+        }
+        
+        // Set SSH command if an SSH key is provided
+        if let Some(key_path) = ssh_key {
+            let key_path_str = key_path.to_string_lossy();
+            // Use -o StrictHostKeyChecking=accept-new to auto-accept new host keys
+            let ssh_command = format!(
+                "ssh -i \"{}\" -o StrictHostKeyChecking=accept-new -o BatchMode=yes",
+                key_path_str
+            );
+            cmd.env("GIT_SSH_COMMAND", ssh_command);
+            debug!("Using SSH key: {}", key_path_str);
         }
         
         let output = cmd.output()
@@ -216,17 +253,25 @@ impl Default for GitCliOperations {
 }
 
 impl GitOperations for GitCliOperations {
-    fn clone_repository(&self, url: &str, path: &Path, branch: &str) -> Result<()> {
+    fn clone_repository(
+        &self,
+        url: &str,
+        path: &Path,
+        branch: &str,
+        ssh_key: Option<&Path>,
+    ) -> Result<()> {
         info!("Cloning {} to {} (branch: {})", url, path.display(), branch);
         
-        self.run_git(&[
+        let args = [
             "clone",
             "--branch", branch,
             "--single-branch",
             url,
             &path.to_string_lossy(),
-        ], None)
-        .with_context(|| format!("Failed to clone repository: {}", url))
+        ];
+        
+        self.run_git_with_ssh_key(&args, None, ssh_key)
+            .with_context(|| format!("Failed to clone repository: {}", url))
     }
 
     fn fetch_repository(&self, path: &Path, branch: &str) -> Result<()> {
@@ -305,7 +350,8 @@ pub fn fetch_bundle(
         git_ops.fetch_repository(target_path, branch)?;
     } else {
         // Clone the repository
-        git_ops.clone_repository(&dependency.git, target_path, branch)?;
+        let ssh_key = dependency.ssh_key.as_deref();
+        git_ops.clone_repository(&dependency.git, target_path, branch, ssh_key)?;
     }
     
     Ok(())
@@ -346,7 +392,13 @@ mod unit_tests {
     }
 
     impl GitOperations for MockGitOperations {
-        fn clone_repository(&self, url: &str, path: &Path, _branch: &str) -> Result<()> {
+        fn clone_repository(
+            &self,
+            url: &str,
+            path: &Path,
+            _branch: &str,
+            _ssh_key: Option<&Path>,
+        ) -> Result<()> {
             self.cloned_repos.write().unwrap().push((
                 url.to_string(),
                 path.to_string_lossy().to_string(),
@@ -391,6 +443,7 @@ mod unit_tests {
             git: "https://github.com/test/repo.git".to_string(),
             path: None,
             branch: None,
+            ssh_key: None,
         };
         
         let target = Path::new("/tmp/test-bundle");
@@ -409,6 +462,7 @@ mod unit_tests {
             git: "https://github.com/test/repo.git".to_string(),
             path: None,
             branch: None,
+            ssh_key: None,
         };
         
         let target = Path::new("/tmp/test-bundle");

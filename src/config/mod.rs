@@ -101,6 +101,7 @@ mod unit_tests {
                 git: "https://github.com/test/repo.git".to_string(),
                 path: None,
                 branch: None,
+                ssh_key: None,
             },
         );
         

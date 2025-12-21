@@ -8,3 +8,17 @@ description = "Common UI assets including icons and stylesheets"
 
 [bundles]
 # No dependencies - this is a leaf bundle
+#
+# Example bundle dependency with HTTPS (default):
+# [bundles.my-bundle]
+# version = "1.0.0"
+# git = "https://github.com/example/my-bundle.git"
+# branch = "main"  # optional, defaults to "main"
+#
+# Example bundle dependency with SSH authentication:
+# NOTE: SSH authentication is implemented but not fully tested yet.
+# TODO: Will be fully supported in a future release.
+# [bundles.private-bundle]
+# version = "1.0.0"
+# git = "git@github.com:example/private-bundle.git"
+# ssh_key = "~/.ssh/id_rsa"  # path to private key, enables SSH auth
