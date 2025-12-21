@@ -1,0 +1,9 @@
+# Example leaf bundle (no dependencies)
+# This bundle contains base styles and CSS variables
+
+gitf2_version = "0.1.0"
+identifier = "gitf2-bundle"
+description = "Base styles and CSS variables - foundation for other bundles"
+
+[bundles]
+# No dependencies - this is a leaf bundle

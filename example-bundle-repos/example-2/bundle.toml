@@ -1,0 +1,11 @@
+# Example bundle with a nested dependency
+# This bundle contains UI components that depend on base styles
+
+gitf2_version = "0.1.0"
+identifier = "gitf2-bundle"
+description = "UI components library with nested dependency"
+
+[bundles.base-styles]
+version = "1.0.0"
+git = "https://github.com/DragonAxeSoftware/gitf2-example-3.git"
+branch = "main"

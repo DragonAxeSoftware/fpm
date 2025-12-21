@@ -1,0 +1,12 @@
+/* Card component - depends on base-styles variables */
+.card {
+    padding: var(--spacing-lg);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-md);
+    background: white;
+}
+
+.card-header {
+    font-size: var(--font-size-lg);
+    margin-bottom: var(--spacing-md);
+}

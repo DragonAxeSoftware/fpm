@@ -12,22 +12,28 @@ use std::collections::HashMap;
 use std::fs;
 
 use crate::test_utils::{
-    create_bundle_manifest, create_sample_project, get_gitf2_binary_path,
+    cleanup_test_env, create_bundle_manifest, create_sample_project, get_gitf2_binary_path,
     is_git_available, run_gitf2, setup_test_env,
-    // cleanup_test_env, // Commented out to inspect results in .tests folder
 };
 use crate::types::{BundleDependency, BUNDLE_DIR};
 
 const TEST_CATEGORY: &str = "integration";
 
-/// The HTTPS URL of the test repository (for public access without SSH key)
-const EXAMPLE_BUNDLE_REPO_HTTPS: &str = "https://github.com/DragonAxeSoftware/gitf2-example-1.git";
+/// Example 1: UI assets bundle (leaf bundle, no dependencies)
+const EXAMPLE_1_REPO: &str = "https://github.com/DragonAxeSoftware/gitf2-example-1.git";
 
-/// The SSH URL of the test repository (for SSH authentication)
-/// NOTE: SSH authentication is not fully implemented in tests yet.
-/// TODO: Load SSH key path from environment variable or .env file when implementing SSH tests.
+/// Example 2: UI components bundle (depends on example-3)
+const EXAMPLE_2_REPO: &str = "https://github.com/DragonAxeSoftware/gitf2-example-2.git";
+
+/// Example 3: Base styles bundle (leaf bundle, no dependencies)
+/// This is automatically installed as a nested dependency of example-2
 #[allow(dead_code)]
-const EXAMPLE_BUNDLE_REPO_SSH: &str = "git@github.com:DragonAxeSoftware/gitf2-example-1.git";
+const EXAMPLE_3_REPO: &str = "https://github.com/DragonAxeSoftware/gitf2-example-3.git";
+
+/// SSH URLs for future SSH authentication tests
+/// NOTE: SSH authentication is not fully implemented in tests yet.
+#[allow(dead_code)]
+const EXAMPLE_1_REPO_SSH: &str = "git@github.com:DragonAxeSoftware/gitf2-example-1.git";
 
 /// Checks preconditions before running integration tests
 fn check_preconditions() -> Result<()> {
@@ -70,7 +76,7 @@ fn test_install_from_real_git_repository() -> Result<()> {
         "ui-assets".to_string(),
         BundleDependency {
             version: "1.0.0".to_string(),
-            git: EXAMPLE_BUNDLE_REPO_HTTPS.to_string(),
+            git: EXAMPLE_1_REPO.to_string(),
             path: None,
             branch: Some("main".to_string()),
             ssh_key: None,
@@ -146,8 +152,7 @@ fn test_install_from_real_git_repository() -> Result<()> {
         "Status should show the installed bundle"
     );
 
-    // Cleanup (commented out to inspect results in .tests folder)
-    // cleanup_test_env(TEST_CATEGORY, test_name)?;
+    cleanup_test_env(TEST_CATEGORY, test_name)?;
 
     Ok(())
 }
@@ -183,7 +188,7 @@ fn test_install_with_specific_branch() -> Result<()> {
         "ui-assets-main".to_string(),
         BundleDependency {
             version: "1.0.0".to_string(),
-            git: EXAMPLE_BUNDLE_REPO_HTTPS.to_string(),
+            git: EXAMPLE_1_REPO.to_string(),
             path: None,
             branch: Some("main".to_string()),
             ssh_key: None,
@@ -207,8 +212,7 @@ fn test_install_with_specific_branch() -> Result<()> {
     let installed_bundle = design_dir.join(BUNDLE_DIR).join("ui-assets-main");
     assert!(installed_bundle.exists(), "Bundle should be installed");
 
-    // Cleanup (commented out to inspect results in .tests folder)
-    // cleanup_test_env(TEST_CATEGORY, test_name)?;
+    cleanup_test_env(TEST_CATEGORY, test_name)?;
 
     Ok(())
 }
@@ -230,7 +234,7 @@ fn test_status_shows_correct_state_after_install() -> Result<()> {
         "ui-assets".to_string(),
         BundleDependency {
             version: "1.0.0".to_string(),
-            git: EXAMPLE_BUNDLE_REPO_HTTPS.to_string(),
+            git: EXAMPLE_1_REPO.to_string(),
             path: None,
             branch: Some("main".to_string()),
             ssh_key: None,
@@ -273,8 +277,151 @@ fn test_status_shows_correct_state_after_install() -> Result<()> {
         // The status should indicate the bundle has local changes
     }
 
-    // Cleanup (commented out to inspect results in .tests folder)
-    // cleanup_test_env(TEST_CATEGORY, test_name)?;
+    cleanup_test_env(TEST_CATEGORY, test_name)?;
+
+    Ok(())
+}
+
+#[test]
+#[ignore]
+fn test_install_nested_bundles() -> Result<()> {
+    check_preconditions()?;
+
+    let test_name = "install_nested";
+    let test_dir = setup_test_env(TEST_CATEGORY, test_name)?;
+
+    create_sample_project(&test_dir)?;
+
+    let design_dir = test_dir.join("src").join("design");
+    let mut bundles = HashMap::new();
+
+    // Install example-1 (ui-assets) - a leaf bundle with no dependencies
+    bundles.insert(
+        "ui-assets".to_string(),
+        BundleDependency {
+            version: "1.0.0".to_string(),
+            git: EXAMPLE_1_REPO.to_string(),
+            path: None,
+            branch: Some("main".to_string()),
+            ssh_key: None,
+        },
+    );
+
+    // Install example-2 (ui-components), which depends on example-3 (base-styles)
+    bundles.insert(
+        "ui-components".to_string(),
+        BundleDependency {
+            version: "1.0.0".to_string(),
+            git: EXAMPLE_2_REPO.to_string(),
+            path: None,
+            branch: Some("main".to_string()),
+            ssh_key: None,
+        },
+    );
+
+    create_bundle_manifest(
+        &design_dir,
+        Some("Test nested bundle installation with multiple top-level bundles"),
+        None,
+        bundles,
+    )?;
+
+    println!("Running gitf2 install for nested bundles in {:?}", design_dir);
+    let output = run_gitf2(&["install"], &design_dir)?;
+
+    println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+    println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+
+    assert!(
+        output.status.success(),
+        "gitf2 install with nested bundles should succeed. Exit code: {:?}\nstderr: {}",
+        output.status.code(),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let bundle_dir = design_dir.join(BUNDLE_DIR);
+
+    // Verify ui-assets (example-1) was installed
+    let ui_assets = bundle_dir.join("ui-assets");
+    assert!(
+        ui_assets.exists(),
+        "ui-assets bundle should be installed at {:?}",
+        ui_assets
+    );
+
+    // Verify example-1 specific files exist
+    assert!(
+        ui_assets.join("README.md").exists(),
+        "ui-assets should contain README.md"
+    );
+    assert!(
+        ui_assets.join("assets").exists(),
+        "ui-assets should contain assets directory"
+    );
+
+    // Verify ui-components (example-2) was installed
+    let ui_components = bundle_dir.join("ui-components");
+    assert!(
+        ui_components.exists(),
+        "ui-components bundle should be installed at {:?}",
+        ui_components
+    );
+
+    // Verify example-2 specific files exist
+    let components_dir = ui_components.join("components");
+    assert!(
+        components_dir.exists(),
+        "ui-components should contain components directory"
+    );
+    assert!(
+        components_dir.join("button.css").exists(),
+        "ui-components should contain button.css"
+    );
+    assert!(
+        components_dir.join("card.css").exists(),
+        "ui-components should contain card.css"
+    );
+
+    // Verify the nested bundle (base-styles from example-3) was installed inside ui-components
+    let nested_bundle_dir = ui_components.join(BUNDLE_DIR).join("base-styles");
+    assert!(
+        nested_bundle_dir.exists(),
+        "Nested base-styles bundle should be installed at {:?}",
+        nested_bundle_dir
+    );
+
+    // Verify example-3 specific files exist in the nested bundle
+    let styles_dir = nested_bundle_dir.join("styles");
+    assert!(
+        styles_dir.exists(),
+        "base-styles should contain styles directory"
+    );
+    assert!(
+        styles_dir.join("variables.css").exists(),
+        "base-styles should contain variables.css"
+    );
+    assert!(
+        styles_dir.join("reset.css").exists(),
+        "base-styles should contain reset.css"
+    );
+
+    // Run status and verify all bundles show up
+    let status_output = run_gitf2(&["status"], &design_dir)?;
+    assert!(status_output.status.success(), "Status should succeed");
+
+    let status_stdout = String::from_utf8_lossy(&status_output.stdout);
+    println!("Status output:\n{}", status_stdout);
+
+    assert!(
+        status_stdout.contains("ui-assets"),
+        "Status should show ui-assets bundle"
+    );
+    assert!(
+        status_stdout.contains("ui-components"),
+        "Status should show ui-components bundle"
+    );
+
+    cleanup_test_env(TEST_CATEGORY, test_name)?;
 
     Ok(())
 }
