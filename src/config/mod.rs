@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
 
-use crate::types::{BundleManifest, FPM_IDENTIFIER, LEGACY_IDENTIFIER};
+use crate::types::{BundleManifest, FPM_IDENTIFIER};
 
 /// Loads and parses a bundle.toml manifest file
 pub fn load_manifest(path: &Path) -> Result<BundleManifest> {
@@ -19,9 +19,8 @@ pub fn parse_manifest(content: &str) -> Result<BundleManifest> {
     
     if !manifest.is_valid_fpm_manifest() {
         anyhow::bail!(
-            "Invalid fpm manifest: identifier must be '{}' or '{}', found '{}'",
+            "Invalid fpm manifest: identifier must be '{}', found '{}'",
             FPM_IDENTIFIER,
-            LEGACY_IDENTIFIER,
             manifest.identifier
         );
     }

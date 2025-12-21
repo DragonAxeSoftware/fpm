@@ -14,19 +14,13 @@ pub const DEFAULT_REMOTE: &str = "fpm";
 /// Directory name where bundles are stored
 pub const BUNDLE_DIR: &str = ".fpm";
 
-/// Legacy identifier for backwards compatibility
-pub const LEGACY_IDENTIFIER: &str = "gitf2-bundle";
-
 /// The bundle manifest structure (bundle.toml)
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct BundleManifest {
     /// The fpm version that created this manifest
-    /// Also accepts legacy "gitf2_version" field for backwards compatibility
-    #[serde(alias = "gitf2_version")]
     pub fpm_version: String,
 
     /// Identifier that marks this as a fpm bundle file
-    /// Accepts both "fpm-bundle" and legacy "gitf2-bundle"
     #[serde(default = "default_identifier")]
     pub identifier: String,
 
@@ -59,9 +53,9 @@ impl BundleManifest {
         }
     }
 
-    /// Checks if this is a valid fpm manifest (accepts both new and legacy identifiers)
+    /// Checks if this is a valid fpm manifest
     pub fn is_valid_fpm_manifest(&self) -> bool {
-        self.identifier == FPM_IDENTIFIER || self.identifier == LEGACY_IDENTIFIER
+        self.identifier == FPM_IDENTIFIER
     }
 
     pub fn is_source_bundle(&self) -> bool {
