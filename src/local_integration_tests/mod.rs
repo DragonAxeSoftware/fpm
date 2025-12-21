@@ -219,7 +219,7 @@ description = "Test bundle for push command"
     let manifest_content = fs::read_to_string(&manifest_path)?;
     let updated_manifest = manifest_content.replace("version = \"0.0.1\"", "version = \"0.0.2\"");
     fs::write(&manifest_path, &updated_manifest)?;
-    
+
     // Also create a test counter file to verify new file creation works
     fs::write(bundle_path.join("test_counter.txt"), "1\n")?;
 
@@ -303,11 +303,7 @@ description = "Child bundle"
 
 [bundles]
 "#;
-    setup_local_bare_repo(
-        &child_remote,
-        &test_dir.join("child_setup"),
-        child_manifest,
-    )?;
+    setup_local_bare_repo(&child_remote, &test_dir.join("child_setup"), child_manifest)?;
 
     // Setup parent bundle (depends on child)
     let parent_manifest = format!(
@@ -372,13 +368,15 @@ branch = "main"
     // Step 3: Bump version in both bundle manifests and create counter files
     let parent_manifest_path = parent_path.join("bundle.toml");
     let parent_manifest_content = fs::read_to_string(&parent_manifest_path)?;
-    let updated_parent = parent_manifest_content.replace("version = \"0.0.1\"", "version = \"0.0.2\"");
+    let updated_parent =
+        parent_manifest_content.replace("version = \"0.0.1\"", "version = \"0.0.2\"");
     fs::write(&parent_manifest_path, &updated_parent)?;
     fs::write(parent_path.join("test_counter.txt"), "1\n")?;
 
     let child_manifest_path = child_path.join("bundle.toml");
     let child_manifest_content = fs::read_to_string(&child_manifest_path)?;
-    let updated_child = child_manifest_content.replace("version = \"0.0.1\"", "version = \"0.0.2\"");
+    let updated_child =
+        child_manifest_content.replace("version = \"0.0.1\"", "version = \"0.0.2\"");
     fs::write(&child_manifest_path, &updated_child)?;
     fs::write(child_path.join("test_counter.txt"), "1\n")?;
 
@@ -438,7 +436,7 @@ fn test_push_excludes_fpm_directory() -> Result<()> {
     // This test verifies that when pushing a bundle, the nested .fpm directory
     // is NOT included in the commit. This is critical to prevent accidentally
     // pushing installed nested bundles to the source repository.
-    
+
     check_preconditions()?;
 
     let test_name = "push_excludes_fpm";
@@ -497,7 +495,10 @@ description = "Test bundle"
     // (simulating what would happen if the bundle had dependencies installed)
     let nested_fpm_dir = bundle_path.join(BUNDLE_DIR);
     fs::create_dir_all(&nested_fpm_dir)?;
-    fs::write(nested_fpm_dir.join("nested-bundle.txt"), "This should NOT be pushed")?;
+    fs::write(
+        nested_fpm_dir.join("nested-bundle.txt"),
+        "This should NOT be pushed",
+    )?;
 
     // Step 6: Bump the version in the manifest and create counter file
     let manifest_path = bundle_path.join("bundle.toml");

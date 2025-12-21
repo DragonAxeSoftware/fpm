@@ -49,7 +49,10 @@ pub fn create_sample_project(base_dir: &Path) -> Result<()> {
     fs::create_dir_all(&src_dir)?;
 
     // Create some sample files
-    fs::write(base_dir.join("README.md"), "# My Project\n\nA sample project.")?;
+    fs::write(
+        base_dir.join("README.md"),
+        "# My Project\n\nA sample project.",
+    )?;
     fs::write(
         src_dir.join("main.rs"),
         "fn main() {\n    println!(\"Hello!\");\n}",
@@ -101,31 +104,31 @@ pub fn get_fpm_binary_path() -> PathBuf {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     path.push("target");
     path.push("debug");
-    
+
     #[cfg(windows)]
     path.push("fpm.exe");
-    
+
     #[cfg(not(windows))]
     path.push("fpm");
-    
+
     path
 }
 
 /// Runs the fpm binary with the given arguments
 pub fn run_fpm(args: &[&str], working_dir: &Path) -> Result<std::process::Output> {
     let binary_path = get_fpm_binary_path();
-    
+
     if !binary_path.exists() {
         anyhow::bail!(
             "fpm binary not found at {:?}. Run 'cargo build' first.",
             binary_path
         );
     }
-    
+
     let output = std::process::Command::new(&binary_path)
         .args(args)
         .current_dir(working_dir)
         .output()?;
-    
+
     Ok(output)
 }

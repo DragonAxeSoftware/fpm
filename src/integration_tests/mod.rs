@@ -125,10 +125,7 @@ fn test_install_from_real_git_repository() -> Result<()> {
     );
 
     let readme = installed_bundle.join("README.md");
-    assert!(
-        readme.exists(),
-        "Installed bundle should contain README.md"
-    );
+    assert!(readme.exists(), "Installed bundle should contain README.md");
 
     let assets_dir = installed_bundle.join("assets");
     assert!(
@@ -138,10 +135,7 @@ fn test_install_from_real_git_repository() -> Result<()> {
 
     // Step 7: Run fpm status command
     let status_output = run_fpm(&["status"], &design_dir)?;
-    assert!(
-        status_output.status.success(),
-        "fpm status should succeed"
-    );
+    assert!(status_output.status.success(), "fpm status should succeed");
 
     let status_stdout = String::from_utf8_lossy(&status_output.stdout);
     println!("Status output:\n{}", status_stdout);
@@ -162,10 +156,10 @@ fn test_install_from_real_git_repository() -> Result<()> {
 fn test_git_not_available_error_message() {
     // This test documents the expected behavior when git is not available
     // It's marked as ignored because we can't easily simulate git being unavailable
-    
+
     // The check_preconditions function should return a clear error message
     // telling the user to install git or configure PATH
-    
+
     // Manual test: rename git.exe temporarily and run the integration tests
     // to verify the error message is clear and helpful
 }
@@ -252,7 +246,7 @@ fn test_status_shows_correct_state_after_install() -> Result<()> {
     assert!(status_output.status.success(), "Status should succeed");
 
     let stdout = String::from_utf8_lossy(&status_output.stdout);
-    
+
     // After a fresh install, the bundle should be in "Synced" state
     assert!(
         stdout.contains("Synced") || stdout.contains("synced"),
@@ -265,14 +259,17 @@ fn test_status_shows_correct_state_after_install() -> Result<()> {
         .join(BUNDLE_DIR)
         .join("ui-assets")
         .join("README.md");
-    
+
     if installed_readme.exists() {
-        fs::write(&installed_readme, "# Modified content\n\nThis was changed locally.")?;
-        
+        fs::write(
+            &installed_readme,
+            "# Modified content\n\nThis was changed locally.",
+        )?;
+
         // Check status again - should show unsynced or modified
         let status_after_modify = run_fpm(&["status"], &design_dir)?;
         let stdout_after = String::from_utf8_lossy(&status_after_modify.stdout);
-        
+
         println!("Status after modification:\n{}", stdout_after);
         // The status should indicate the bundle has local changes
     }
@@ -457,19 +454,21 @@ fn bump_manifest_version(bundle_path: &std::path::Path) -> Result<(String, Strin
     let manifest_path = bundle_path.join("bundle.toml");
     let content = fs::read_to_string(&manifest_path)
         .with_context(|| format!("Failed to read manifest at {}", manifest_path.display()))?;
-    
-    let mut manifest: BundleManifest = toml::from_str(&content)
-        .context("Failed to parse bundle.toml")?;
-    
-    let old_version = manifest.version.clone().unwrap_or_else(|| "0.0.0".to_string());
+
+    let mut manifest: BundleManifest =
+        toml::from_str(&content).context("Failed to parse bundle.toml")?;
+
+    let old_version = manifest
+        .version
+        .clone()
+        .unwrap_or_else(|| "0.0.0".to_string());
     let new_version = bump_patch_version(&old_version);
     manifest.version = Some(new_version.clone());
-    
-    let new_content = toml::to_string_pretty(&manifest)
-        .context("Failed to serialize manifest")?;
+
+    let new_content = toml::to_string_pretty(&manifest).context("Failed to serialize manifest")?;
     fs::write(&manifest_path, new_content)
         .with_context(|| format!("Failed to write manifest at {}", manifest_path.display()))?;
-    
+
     // Also create/update a test counter file to verify new file creation works
     let counter_path = bundle_path.join("test_counter.txt");
     let current_count = if counter_path.exists() {
@@ -481,7 +480,7 @@ fn bump_manifest_version(bundle_path: &std::path::Path) -> Result<(String, Strin
         0
     };
     fs::write(&counter_path, format!("{}\n", current_count + 1))?;
-    
+
     Ok((old_version, new_version))
 }
 
@@ -545,7 +544,11 @@ fn test_push_counter_to_real_repo() -> Result<()> {
     // Step 5: Run fpm push
     println!("Pushing manifest version update to real GitHub repo");
     let push_output = run_fpm(
-        &["push", "-m", &format!("fpm test: Bump version to {}", new_version)],
+        &[
+            "push",
+            "-m",
+            &format!("fpm test: Bump version to {}", new_version),
+        ],
         &design_dir,
     )?;
     let push_stdout = String::from_utf8_lossy(&push_output.stdout);
@@ -559,7 +562,10 @@ fn test_push_counter_to_real_repo() -> Result<()> {
             push_stdout.contains("Pushed") || push_stdout.contains("✓"),
             "Should indicate push success"
         );
-        println!("✓ Successfully pushed version {} to {}", new_version, EXAMPLE_1_REPO);
+        println!(
+            "✓ Successfully pushed version {} to {}",
+            new_version, EXAMPLE_1_REPO
+        );
     } else {
         // Expected to fail if no push access
         let stderr_lower = push_stderr.to_lowercase();

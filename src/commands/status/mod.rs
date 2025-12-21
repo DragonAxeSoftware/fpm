@@ -30,11 +30,7 @@ pub fn execute_with_git(manifest_path: &Path, git_ops: Arc<dyn GitOperations>) -
         manifest_path.to_path_buf()
     };
 
-    println!(
-        "{} {}",
-        "Bundle status for".cyan(),
-        manifest_path.display()
-    );
+    println!("{} {}", "Bundle status for".cyan(), manifest_path.display());
     println!();
 
     let entries = collect_all_statuses(&manifest_path, git_ops)?;
@@ -71,9 +67,18 @@ pub fn execute_with_git(manifest_path: &Path, git_ops: Arc<dyn GitOperations>) -
 
     // Summary
     println!();
-    let synced_count = entries.iter().filter(|e| e.status == BundleStatus::Synced).count();
-    let unsynced_count = entries.iter().filter(|e| e.status == BundleStatus::Unsynced).count();
-    let source_count = entries.iter().filter(|e| e.status == BundleStatus::Source).count();
+    let synced_count = entries
+        .iter()
+        .filter(|e| e.status == BundleStatus::Synced)
+        .count();
+    let unsynced_count = entries
+        .iter()
+        .filter(|e| e.status == BundleStatus::Unsynced)
+        .count();
+    let source_count = entries
+        .iter()
+        .filter(|e| e.status == BundleStatus::Source)
+        .count();
 
     println!(
         "Total: {} synced, {} unsynced, {} source",
@@ -97,9 +102,7 @@ pub fn collect_all_statuses(
     };
 
     let manifest = load_manifest(&manifest_path)?;
-    let parent_dir = manifest_path
-        .parent()
-        .context("Invalid manifest path")?;
+    let parent_dir = manifest_path.parent().context("Invalid manifest path")?;
 
     let mut entries = Vec::new();
 
@@ -107,7 +110,7 @@ pub fn collect_all_statuses(
     if manifest.is_source_bundle() {
         let root_path = parent_dir.join(manifest.root.as_ref().unwrap());
         let status = determine_source_status(git_ops.as_ref(), &root_path)?;
-        
+
         entries.push(StatusEntry {
             name: "(root)".to_string(),
             path: root_path.to_string_lossy().to_string(),
@@ -181,7 +184,7 @@ fn collect_bundle_statuses(
     for entry in std::fs::read_dir(bundle_dir)? {
         let entry = entry?;
         let path = entry.path();
-        
+
         if !path.is_dir() {
             continue;
         }
@@ -197,7 +200,7 @@ fn collect_bundle_statuses(
         }
 
         let status = determine_bundle_status(git_ops, &path)?;
-        
+
         entries.push(StatusEntry {
             name: name.clone(),
             path: path.to_string_lossy().to_string(),
@@ -227,7 +230,7 @@ mod unit_tests {
             status: BundleStatus::Synced,
             depth: 0,
         };
-        
+
         assert_eq!(entry.name, "test-bundle");
         assert_eq!(entry.status, BundleStatus::Synced);
     }

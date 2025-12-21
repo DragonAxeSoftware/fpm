@@ -29,9 +29,7 @@ pub fn execute_with_git(manifest_path: &Path, git_ops: Arc<dyn GitOperations>) -
     );
 
     let manifest = load_manifest(&manifest_path)?;
-    let parent_dir = manifest_path
-        .parent()
-        .context("Invalid manifest path")?;
+    let parent_dir = manifest_path.parent().context("Invalid manifest path")?;
 
     // Check if this is a source bundle
     if manifest.root.is_none() {
@@ -43,7 +41,7 @@ pub fn execute_with_git(manifest_path: &Path, git_ops: Arc<dyn GitOperations>) -
     }
 
     let root_dir = parent_dir.join(manifest.root.as_ref().unwrap());
-    
+
     if !root_dir.exists() {
         anyhow::bail!(
             "Root directory '{}' does not exist. Cannot publish.",
@@ -64,7 +62,12 @@ pub fn execute_with_git(manifest_path: &Path, git_ops: Arc<dyn GitOperations>) -
     // This could be stored in a separate field or inferred
     let remote_url = get_publish_remote(&manifest_path, git_ops.as_ref())?;
 
-    publish_bundle(git_ops.as_ref(), &root_dir, &remote_url, &manifest.fpm_version)?;
+    publish_bundle(
+        git_ops.as_ref(),
+        &root_dir,
+        &remote_url,
+        &manifest.fpm_version,
+    )?;
 
     println!("{}", "Published successfully!".green().bold());
     Ok(())
@@ -73,7 +76,7 @@ pub fn execute_with_git(manifest_path: &Path, git_ops: Arc<dyn GitOperations>) -
 fn get_publish_remote(manifest_path: &Path, git_ops: &dyn GitOperations) -> Result<String> {
     // Try to read the remote from git config if already initialized
     let parent = manifest_path.parent().context("Invalid manifest path")?;
-    
+
     if git_ops.is_repository(parent) {
         // Try to get the fpm remote URL
         if let Ok(repo) = git2::Repository::open(parent) {
@@ -90,7 +93,7 @@ fn get_publish_remote(manifest_path: &Path, git_ops: &dyn GitOperations) -> Resu
             }
         }
     }
-    
+
     anyhow::bail!(
         "No remote URL configured for publishing. \
         Please initialize the bundle with a git remote or add a 'publish_url' field."

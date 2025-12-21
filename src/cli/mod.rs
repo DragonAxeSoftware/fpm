@@ -2,7 +2,7 @@ use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 /// fpm - A file package manager that resembles Git and NPM, but for files in general.
-/// 
+///
 /// Manages file bundles using git repositories as the backend storage.
 #[derive(Parser, Debug)]
 #[command(name = "fpm")]
@@ -22,19 +22,19 @@ pub struct Cli {
 #[derive(Subcommand, Debug)]
 pub enum Commands {
     /// Install bundles from the manifest file
-    /// 
+    ///
     /// Fetches all bundles specified in bundle.toml from their git repositories
     /// and places them in .fpm subdirectories.
     Install,
 
     /// Publish bundles to their remote repositories
-    /// 
+    ///
     /// Pushes local bundle changes to the configured git remotes.
     /// Requires version increment if changes have been made.
     Publish,
 
     /// Push changes in installed bundles back to their source repositories
-    /// 
+    ///
     /// Commits and pushes local modifications made to installed bundles.
     /// Starts from the current manifest and recursively pushes all nested bundles
     /// (deepest first, then parent bundles). Requires write access to the source repositories.
@@ -49,7 +49,7 @@ pub enum Commands {
     },
 
     /// Show status of all bundles
-    /// 
+    ///
     /// Displays whether bundles are synced, unsynced, or are source bundles.
     Status,
 }

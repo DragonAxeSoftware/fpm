@@ -38,7 +38,7 @@ impl Git2Operations {
 
     fn get_callbacks<'a>() -> RemoteCallbacks<'a> {
         let mut callbacks = RemoteCallbacks::new();
-        
+
         callbacks.credentials(|_url, username_from_url, _allowed_types| {
             // Try SSH agent first, then fall back to default credentials
             if let Some(username) = username_from_url {
@@ -47,7 +47,7 @@ impl Git2Operations {
                 Cred::default()
             }
         });
-        
+
         callbacks
     }
 }
@@ -69,58 +69,60 @@ impl GitOperations for Git2Operations {
         // Note: Git2Operations currently ignores ssh_key parameter.
         // For SSH support with custom keys, use GitCliOperations instead.
         info!("Cloning {} to {}", url, path.display());
-        
+
         let callbacks = Self::get_callbacks();
         let mut fetch_options = FetchOptions::new();
         fetch_options.remote_callbacks(callbacks);
-        
+
         RepoBuilder::new()
             .branch(branch)
             .fetch_options(fetch_options)
             .clone(url, path)
             .with_context(|| format!("Failed to clone repository: {}", url))?;
-        
+
         Ok(())
     }
 
     fn fetch_repository(&self, path: &Path, branch: &str) -> Result<()> {
         debug!("Fetching updates for {}", path.display());
-        
+
         let repo = Repository::open(path)
             .with_context(|| format!("Failed to open repository: {}", path.display()))?;
-        
-        let mut remote = repo.find_remote("origin")
+
+        let mut remote = repo
+            .find_remote("origin")
             .or_else(|_| repo.find_remote(DEFAULT_REMOTE))
             .context("Failed to find remote")?;
-        
+
         let callbacks = Self::get_callbacks();
         let mut fetch_options = FetchOptions::new();
         fetch_options.remote_callbacks(callbacks);
-        
-        remote.fetch(&[branch], Some(&mut fetch_options), None)
+
+        remote
+            .fetch(&[branch], Some(&mut fetch_options), None)
             .context("Failed to fetch from remote")?;
-        
+
         Ok(())
     }
 
     fn init_repository(&self, path: &Path) -> Result<()> {
         info!("Initializing git repository at {}", path.display());
-        
+
         let mut opts = RepositoryInitOptions::new();
         opts.initial_head(DEFAULT_BRANCH);
-        
+
         Repository::init_opts(path, &opts)
             .with_context(|| format!("Failed to initialize repository: {}", path.display()))?;
-        
+
         Ok(())
     }
 
     fn add_remote(&self, path: &Path, name: &str, url: &str) -> Result<()> {
         debug!("Adding remote {} -> {}", name, url);
-        
+
         let repo = Repository::open(path)
             .with_context(|| format!("Failed to open repository: {}", path.display()))?;
-        
+
         // Check if remote already exists
         if repo.find_remote(name).is_ok() {
             debug!("Remote {} already exists, updating URL", name);
@@ -129,64 +131,67 @@ impl GitOperations for Git2Operations {
             repo.remote(name, url)
                 .with_context(|| format!("Failed to add remote: {}", name))?;
         }
-        
+
         Ok(())
     }
 
     fn commit_all(&self, path: &Path, message: &str) -> Result<()> {
         debug!("Committing all changes in {}", path.display());
-        
+
         let repo = Repository::open(path)
             .with_context(|| format!("Failed to open repository: {}", path.display()))?;
-        
+
         // Add all files
         let mut index = repo.index()?;
         index.add_all(["*"].iter(), git2::IndexAddOption::DEFAULT, None)?;
         index.write()?;
-        
+
         let tree_id = index.write_tree()?;
         let tree = repo.find_tree(tree_id)?;
-        
+
         // Get signature
-        let sig = repo.signature()
+        let sig = repo
+            .signature()
             .or_else(|_| git2::Signature::now("fpm", "fpm@local"))?;
-        
+
         // Get parent commit if exists
         let parent = repo.head().ok().and_then(|h| h.peel_to_commit().ok());
-        
+
         let parents: Vec<&git2::Commit> = parent.iter().collect();
-        
+
         repo.commit(Some("HEAD"), &sig, &sig, message, &tree, &parents)?;
-        
+
         Ok(())
     }
 
     fn push(&self, path: &Path, remote: &str, branch: &str) -> Result<()> {
         info!("Pushing to {} branch {}", remote, branch);
-        
+
         let repo = Repository::open(path)
             .with_context(|| format!("Failed to open repository: {}", path.display()))?;
-        
-        let mut remote_obj = repo.find_remote(remote)
+
+        let mut remote_obj = repo
+            .find_remote(remote)
             .with_context(|| format!("Remote '{}' not found", remote))?;
-        
+
         let callbacks = Self::get_callbacks();
         let mut push_options = PushOptions::new();
         push_options.remote_callbacks(callbacks);
-        
+
         let refspec = format!("refs/heads/{}:refs/heads/{}", branch, branch);
-        remote_obj.push(&[&refspec], Some(&mut push_options))
+        remote_obj
+            .push(&[&refspec], Some(&mut push_options))
             .with_context(|| format!("Failed to push to {}/{}", remote, branch))?;
-        
+
         Ok(())
     }
 
     fn has_local_changes(&self, path: &Path) -> Result<bool> {
         let repo = Repository::open(path)
             .with_context(|| format!("Failed to open repository: {}", path.display()))?;
-        
+
         let statuses = repo.statuses(None)?;
-        
+
         Ok(!statuses.is_empty())
     }
 
@@ -197,23 +202,22 @@ impl GitOperations for Git2Operations {
     fn get_file_from_head(&self, repo_path: &Path, file_path: &str) -> Result<String> {
         let repo = Repository::open(repo_path)
             .with_context(|| format!("Failed to open repository: {}", repo_path.display()))?;
-        
-        let head = repo.head()
-            .context("Failed to get HEAD reference")?;
-        let commit = head.peel_to_commit()
-            .context("Failed to get HEAD commit")?;
-        let tree = commit.tree()
-            .context("Failed to get commit tree")?;
-        
-        let entry = tree.get_path(std::path::Path::new(file_path))
+
+        let head = repo.head().context("Failed to get HEAD reference")?;
+        let commit = head.peel_to_commit().context("Failed to get HEAD commit")?;
+        let tree = commit.tree().context("Failed to get commit tree")?;
+
+        let entry = tree
+            .get_path(std::path::Path::new(file_path))
             .with_context(|| format!("File '{}' not found in HEAD", file_path))?;
-        
-        let blob = repo.find_blob(entry.id())
+
+        let blob = repo
+            .find_blob(entry.id())
             .context("Failed to get file blob")?;
-        
-        let content = std::str::from_utf8(blob.content())
-            .context("File content is not valid UTF-8")?;
-        
+
+        let content =
+            std::str::from_utf8(blob.content()).context("File content is not valid UTF-8")?;
+
         Ok(content.to_string())
     }
 }
@@ -242,11 +246,11 @@ impl GitCliOperations {
     ) -> Result<()> {
         let mut cmd = std::process::Command::new("git");
         cmd.args(args);
-        
+
         if let Some(dir) = working_dir {
             cmd.current_dir(dir);
         }
-        
+
         // Set SSH command if an SSH key is provided
         if let Some(key_path) = ssh_key {
             let key_path_str = key_path.to_string_lossy();
@@ -258,15 +262,14 @@ impl GitCliOperations {
             cmd.env("GIT_SSH_COMMAND", ssh_command);
             debug!("Using SSH key: {}", key_path_str);
         }
-        
-        let output = cmd.output()
-            .context("Failed to execute git command")?;
-        
+
+        let output = cmd.output().context("Failed to execute git command")?;
+
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             anyhow::bail!("Git command failed: {}", stderr);
         }
-        
+
         Ok(())
     }
 }
@@ -286,35 +289,39 @@ impl GitOperations for GitCliOperations {
         ssh_key: Option<&Path>,
     ) -> Result<()> {
         info!("Cloning {} to {} (branch: {})", url, path.display(), branch);
-        
+
         let args = [
             "clone",
-            "--branch", branch,
+            "--branch",
+            branch,
             "--single-branch",
             url,
             &path.to_string_lossy(),
         ];
-        
+
         self.run_git_with_ssh_key(&args, None, ssh_key)
             .with_context(|| format!("Failed to clone repository: {}", url))
     }
 
     fn fetch_repository(&self, path: &Path, branch: &str) -> Result<()> {
         debug!("Fetching updates for {}", path.display());
-        
+
         self.run_git(&["fetch", "origin", branch], Some(path))
             .context("Failed to fetch from remote")?;
-        
+
         // Reset to the fetched branch
-        self.run_git(&["reset", "--hard", &format!("origin/{}", branch)], Some(path))
-            .context("Failed to reset to fetched branch")?;
-        
+        self.run_git(
+            &["reset", "--hard", &format!("origin/{}", branch)],
+            Some(path),
+        )
+        .context("Failed to reset to fetched branch")?;
+
         Ok(())
     }
 
     fn init_repository(&self, path: &Path) -> Result<()> {
         info!("Initializing git repository at {}", path.display());
-        
+
         std::fs::create_dir_all(path)?;
         self.run_git(&["init", "-b", DEFAULT_BRANCH], Some(path))
             .with_context(|| format!("Failed to initialize repository: {}", path.display()))
@@ -322,27 +329,30 @@ impl GitOperations for GitCliOperations {
 
     fn add_remote(&self, path: &Path, name: &str, url: &str) -> Result<()> {
         debug!("Adding remote {} -> {}", name, url);
-        
+
         // Try to add, if it fails try to set-url
-        if self.run_git(&["remote", "add", name, url], Some(path)).is_err() {
+        if self
+            .run_git(&["remote", "add", name, url], Some(path))
+            .is_err()
+        {
             self.run_git(&["remote", "set-url", name, url], Some(path))?;
         }
-        
+
         Ok(())
     }
 
     fn commit_all(&self, path: &Path, message: &str) -> Result<()> {
         debug!("Committing all changes in {}", path.display());
-        
+
         self.run_git(&["add", "-A"], Some(path))?;
         self.run_git(&["commit", "-m", message], Some(path))?;
-        
+
         Ok(())
     }
 
     fn push(&self, path: &Path, remote: &str, branch: &str) -> Result<()> {
         info!("Pushing to {} branch {}", remote, branch);
-        
+
         self.run_git(&["push", "-u", remote, branch], Some(path))
             .with_context(|| format!("Failed to push to {}/{}", remote, branch))
     }
@@ -353,7 +363,7 @@ impl GitOperations for GitCliOperations {
             .current_dir(path)
             .output()
             .context("Failed to check git status")?;
-        
+
         Ok(!output.stdout.is_empty())
     }
 
@@ -367,15 +377,15 @@ impl GitOperations for GitCliOperations {
             .current_dir(repo_path)
             .output()
             .context("Failed to run git show")?;
-        
+
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             anyhow::bail!("Failed to get file from HEAD: {}", stderr);
         }
-        
-        let content = String::from_utf8(output.stdout)
-            .context("File content is not valid UTF-8")?;
-        
+
+        let content =
+            String::from_utf8(output.stdout).context("File content is not valid UTF-8")?;
+
         Ok(content)
     }
 }
@@ -387,7 +397,7 @@ pub fn fetch_bundle(
     target_path: &Path,
 ) -> Result<()> {
     let branch = dependency.branch();
-    
+
     if git_ops.is_repository(target_path) {
         // Repository exists, fetch updates
         git_ops.fetch_repository(target_path, branch)?;
@@ -396,7 +406,7 @@ pub fn fetch_bundle(
         let ssh_key = dependency.ssh_key.as_deref();
         git_ops.clone_repository(&dependency.git, target_path, branch, ssh_key)?;
     }
-    
+
     Ok(())
 }
 
@@ -409,9 +419,9 @@ pub fn init_bundle_for_publish(
     if !git_ops.is_repository(path) {
         git_ops.init_repository(path)?;
     }
-    
+
     git_ops.add_remote(path, DEFAULT_REMOTE, remote_url)?;
-    
+
     Ok(())
 }
 
@@ -442,10 +452,10 @@ mod unit_tests {
             _branch: &str,
             _ssh_key: Option<&Path>,
         ) -> Result<()> {
-            self.cloned_repos.write().unwrap().push((
-                url.to_string(),
-                path.to_string_lossy().to_string(),
-            ));
+            self.cloned_repos
+                .write()
+                .unwrap()
+                .push((url.to_string(), path.to_string_lossy().to_string()));
             Ok(())
         }
 
@@ -493,10 +503,10 @@ mod unit_tests {
             branch: None,
             ssh_key: None,
         };
-        
+
         let target = Path::new("/tmp/test-bundle");
         fetch_bundle(&mock, &dep, target).unwrap();
-        
+
         let cloned = mock.cloned_repos.read().unwrap();
         assert_eq!(cloned.len(), 1);
         assert_eq!(cloned[0].0, "https://github.com/test/repo.git");
@@ -512,10 +522,10 @@ mod unit_tests {
             branch: None,
             ssh_key: None,
         };
-        
+
         let target = Path::new("/tmp/test-bundle");
         fetch_bundle(&mock, &dep, target).unwrap();
-        
+
         // Should not clone since repo exists
         let cloned = mock.cloned_repos.read().unwrap();
         assert_eq!(cloned.len(), 0);

@@ -1,5 +1,5 @@
 //! Mock implementation of Git operations for testing
-//! 
+//!
 //! This module provides a mock git implementation that simulates git operations
 //! without actually connecting to remote repositories.
 
@@ -30,7 +30,7 @@ struct RemoteBundleRegistration {
 }
 
 /// Mock git operations for testing
-/// 
+///
 /// This implementation doesn't actually perform git operations but instead:
 /// - Tracks which repositories were "cloned"
 /// - Creates local directory structures to simulate cloned repos
@@ -38,13 +38,13 @@ struct RemoteBundleRegistration {
 pub struct MockGitOperations {
     /// Registered remote bundles (url -> registration)
     _remotes: RwLock<HashMap<String, RemoteBundleRegistration>>,
-    
+
     /// Paths that have been "cloned"
     _cloned_repos: RwLock<Vec<ClonedRepo>>,
-    
+
     /// Paths that have been initialized as repos
     _initialized_repos: RwLock<Vec<PathBuf>>,
-    
+
     /// Simulated local changes (path -> has changes)
     _local_changes: RwLock<HashMap<PathBuf, bool>>,
 }
@@ -66,12 +66,12 @@ impl MockGitOperations {
             _local_changes: RwLock::new(HashMap::new()),
         }
     }
-    
+
     /// Registers a remote bundle that can be "cloned"
     pub fn register_remote_bundle(&self, url: &str, path: &str, content: MockBundleContent) {
         self.register_remote_bundle_with_deps(url, path, content, HashMap::new());
     }
-    
+
     /// Registers a remote bundle with nested dependencies
     pub fn register_remote_bundle_with_deps(
         &self,
@@ -91,19 +91,19 @@ impl MockGitOperations {
             },
         );
     }
-    
+
     /// Returns the list of cloned repositories
     pub fn get_cloned_repos(&self) -> Vec<ClonedRepo> {
         self._cloned_repos.read().unwrap().clone()
     }
-    
+
     /// Simulates local changes for a path
     #[allow(dead_code)]
     pub fn set_local_changes(&self, path: &Path, has_changes: bool) {
         let mut changes = self._local_changes.write().unwrap();
         changes.insert(path.to_path_buf(), has_changes);
     }
-    
+
     /// Creates mock bundle files at the target path
     fn create_mock_bundle_files(
         &self,
@@ -111,7 +111,7 @@ impl MockGitOperations {
         registration: &RemoteBundleRegistration,
     ) -> Result<()> {
         fs::create_dir_all(target_path)?;
-        
+
         // Write content files
         for (filename, content) in &registration.content.files {
             let file_path = target_path.join(filename);
@@ -120,7 +120,7 @@ impl MockGitOperations {
             }
             fs::write(file_path, content)?;
         }
-        
+
         // Create bundle.toml manifest
         let manifest = BundleManifest {
             fpm_version: "0.1.0".to_string(),
@@ -131,14 +131,14 @@ impl MockGitOperations {
             root: None,
             bundles: registration.nested_bundles.clone(),
         };
-        
+
         let manifest_path = target_path.join("bundle.toml");
         save_manifest(&manifest, &manifest_path)?;
-        
+
         // Mark as initialized repo
         let mut initialized = self._initialized_repos.write().unwrap();
         initialized.push(target_path.to_path_buf());
-        
+
         Ok(())
     }
 }
@@ -160,7 +160,7 @@ impl GitOperations for MockGitOperations {
                 branch: branch.to_string(),
             });
         }
-        
+
         // Look up registered remote and create files
         let remotes = self._remotes.read().unwrap();
         if remotes.contains_key(url) {
@@ -171,7 +171,7 @@ impl GitOperations for MockGitOperations {
         } else {
             // Create minimal directory structure for unregistered repos
             fs::create_dir_all(path)?;
-            
+
             let manifest = BundleManifest {
                 fpm_version: "0.1.0".to_string(),
                 identifier: FPM_IDENTIFIER.to_string(),
@@ -181,48 +181,48 @@ impl GitOperations for MockGitOperations {
                 root: None,
                 bundles: HashMap::new(),
             };
-            
+
             let manifest_path = path.join("bundle.toml");
             save_manifest(&manifest, &manifest_path)?;
         }
-        
+
         Ok(())
     }
-    
+
     fn fetch_repository(&self, _path: &Path, _branch: &str) -> Result<()> {
         // Mock: do nothing, consider it fetched
         Ok(())
     }
-    
+
     fn init_repository(&self, path: &Path) -> Result<()> {
         fs::create_dir_all(path)?;
-        
+
         let mut initialized = self._initialized_repos.write().unwrap();
         initialized.push(path.to_path_buf());
-        
+
         Ok(())
     }
-    
+
     fn add_remote(&self, _path: &Path, _name: &str, _url: &str) -> Result<()> {
         // Mock: do nothing
         Ok(())
     }
-    
+
     fn commit_all(&self, _path: &Path, _message: &str) -> Result<()> {
         // Mock: do nothing
         Ok(())
     }
-    
+
     fn push(&self, _path: &Path, _remote: &str, _branch: &str) -> Result<()> {
         // Mock: do nothing
         Ok(())
     }
-    
+
     fn has_local_changes(&self, path: &Path) -> Result<bool> {
         let changes = self._local_changes.read().unwrap();
         Ok(changes.get(path).copied().unwrap_or(false))
     }
-    
+
     fn is_repository(&self, path: &Path) -> bool {
         let initialized = self._initialized_repos.read().unwrap();
         initialized.contains(&path.to_path_buf())
@@ -239,33 +239,29 @@ impl GitOperations for MockGitOperations {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_mock_git_clone_records_operation() {
         let mock = MockGitOperations::new();
-        
+
         let temp_dir = std::env::temp_dir().join("fpm_mock_test");
         let _ = fs::remove_dir_all(&temp_dir);
-        
-        mock.clone_repository(
-            "https://github.com/test/repo.git",
-            &temp_dir,
-            "main",
-            None,
-        ).unwrap();
-        
+
+        mock.clone_repository("https://github.com/test/repo.git", &temp_dir, "main", None)
+            .unwrap();
+
         let cloned = mock.get_cloned_repos();
         assert_eq!(cloned.len(), 1);
         assert_eq!(cloned[0].url, "https://github.com/test/repo.git");
-        
+
         // Cleanup
         let _ = fs::remove_dir_all(&temp_dir);
     }
-    
+
     #[test]
     fn test_mock_git_creates_manifest() {
         let mock = MockGitOperations::new();
-        
+
         mock.register_remote_bundle(
             "https://github.com/test/bundle.git",
             "",
@@ -274,20 +270,21 @@ mod tests {
                 files: vec![("test.txt".to_string(), "Hello".to_string())],
             },
         );
-        
+
         let temp_dir = std::env::temp_dir().join("fpm_mock_manifest_test");
         let _ = fs::remove_dir_all(&temp_dir);
-        
+
         mock.clone_repository(
             "https://github.com/test/bundle.git",
             &temp_dir,
             "main",
             None,
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         assert!(temp_dir.join("bundle.toml").exists());
         assert!(temp_dir.join("test.txt").exists());
-        
+
         // Cleanup
         let _ = fs::remove_dir_all(&temp_dir);
     }

@@ -8,15 +8,15 @@ use crate::types::{BundleManifest, FPM_IDENTIFIER};
 pub fn load_manifest(path: &Path) -> Result<BundleManifest> {
     let content = fs::read_to_string(path)
         .with_context(|| format!("Failed to read manifest file: {}", path.display()))?;
-    
+
     parse_manifest(&content)
 }
 
 /// Parses a manifest from TOML string content
 pub fn parse_manifest(content: &str) -> Result<BundleManifest> {
-    let manifest: BundleManifest = toml::from_str(content)
-        .context("Failed to parse bundle.toml")?;
-    
+    let manifest: BundleManifest =
+        toml::from_str(content).context("Failed to parse bundle.toml")?;
+
     if !manifest.is_valid_fpm_manifest() {
         anyhow::bail!(
             "Invalid fpm manifest: identifier must be '{}', found '{}'",
@@ -24,23 +24,22 @@ pub fn parse_manifest(content: &str) -> Result<BundleManifest> {
             manifest.identifier
         );
     }
-    
+
     Ok(manifest)
 }
 
 /// Saves a manifest to a file
 pub fn save_manifest(manifest: &BundleManifest, path: &Path) -> Result<()> {
-    let content = toml::to_string_pretty(manifest)
-        .context("Failed to serialize manifest")?;
-    
+    let content = toml::to_string_pretty(manifest).context("Failed to serialize manifest")?;
+
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
             .with_context(|| format!("Failed to create directory: {}", parent.display()))?;
     }
-    
+
     fs::write(path, content)
         .with_context(|| format!("Failed to write manifest: {}", path.display()))?;
-    
+
     Ok(())
 }
 
@@ -50,7 +49,7 @@ pub fn has_manifest(dir: &Path) -> bool {
     if !manifest_path.exists() {
         return false;
     }
-    
+
     load_manifest(&manifest_path).is_ok()
 }
 
@@ -71,7 +70,7 @@ mod unit_tests {
             git = "https://github.com/example/designs.git"
             path = "martha-designs"
         "#;
-        
+
         let manifest = parse_manifest(content).unwrap();
         assert_eq!(manifest.fpm_version, "0.1.0");
         assert_eq!(manifest.description, Some("A test bundle".to_string()));
@@ -84,10 +83,13 @@ mod unit_tests {
             fpm_version = "0.1.0"
             identifier = "wrong-identifier"
         "#;
-        
+
         let result = parse_manifest(content);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Invalid fpm manifest"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid fpm manifest"));
     }
 
     #[test]
@@ -104,10 +106,10 @@ mod unit_tests {
                 ssh_key: None,
             },
         );
-        
+
         let serialized = toml::to_string_pretty(&manifest).unwrap();
         let deserialized = parse_manifest(&serialized).unwrap();
-        
+
         assert_eq!(manifest, deserialized);
     }
 }

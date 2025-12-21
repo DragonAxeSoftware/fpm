@@ -93,7 +93,7 @@ pub struct BundleDependency {
     /// Optional path to SSH private key for authentication.
     /// If provided, SSH authentication will be used instead of HTTPS.
     /// The path can be absolute or relative to the user's home directory (e.g., "~/.ssh/id_rsa").
-    /// 
+    ///
     /// NOTE: SSH authentication is implemented but not fully tested yet.
     /// TODO: Add integration tests with SSH key from environment variable.
     #[serde(default)]
@@ -153,7 +153,7 @@ mod unit_tests {
     fn test_manifest_serialization() {
         let manifest = BundleManifest::new("0.1.0");
         let toml_str = toml::to_string_pretty(&manifest).unwrap();
-        
+
         assert!(toml_str.contains("fpm_version"));
         assert!(toml_str.contains("fpm-bundle"));
     }
@@ -170,9 +170,9 @@ mod unit_tests {
             git = "https://github.com/example/repo.git"
             path = "bundles/my-bundle"
         "#;
-        
+
         let manifest: BundleManifest = toml::from_str(toml_str).unwrap();
-        
+
         assert_eq!(manifest.fpm_version, "0.1.0");
         assert!(manifest.is_valid_fpm_manifest());
         assert_eq!(manifest.description, Some("Test bundle".to_string()));
@@ -190,7 +190,7 @@ mod unit_tests {
     fn test_is_source_bundle() {
         let mut manifest = BundleManifest::new("0.1.0");
         assert!(!manifest.is_source_bundle());
-        
+
         manifest.root = Some(PathBuf::from("artifacts"));
         assert!(manifest.is_source_bundle());
     }
