@@ -11,6 +11,7 @@ pub mod commands;
 pub mod config;
 pub mod git;
 pub mod types;
+pub mod version;
 
 #[cfg(test)]
 mod test_utils;

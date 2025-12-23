@@ -3,13 +3,19 @@ use std::fs;
 use std::path::Path;
 
 use crate::types::{BundleManifest, FPM_IDENTIFIER};
+use crate::version::check_manifest_compatibility;
 
 /// Loads and parses a bundle.toml manifest file
 pub fn load_manifest(path: &Path) -> Result<BundleManifest> {
     let content = fs::read_to_string(path)
         .with_context(|| format!("Failed to read manifest file: {}", path.display()))?;
 
-    parse_manifest(&content)
+    let manifest = parse_manifest(&content)?;
+    
+    // Check version compatibility and warn if needed
+    check_manifest_compatibility(&manifest.fpm_version);
+    
+    Ok(manifest)
 }
 
 /// Parses a manifest from TOML string content
