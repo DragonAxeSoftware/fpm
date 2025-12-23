@@ -15,26 +15,52 @@
     You may need to manually delete it from the GitHub Releases page first.
 
 .PARAMETER Version
-    The version tag to recreate (e.g., "v0.1.0"). Required.
+    The version tag to recreate (e.g., "v0.1.0"). If not specified, reads from Cargo.toml.
 
 .PARAMETER DryRun
     If specified, shows what would happen without making changes.
 
 .EXAMPLE
-    .\recreate-release.ps1 -Version v0.1.0
+    .\recreate-release.ps1                    # Use version from Cargo.toml
     
 .EXAMPLE
-    .\recreate-release.ps1 -Version v0.1.0 -DryRun
+    .\recreate-release.ps1 -Version v0.1.0    # Use explicit version
+
+.EXAMPLE
+    .\recreate-release.ps1 -DryRun            # Preview without changes
 #>
 
 param(
-    [Parameter(Mandatory = $true)]
     [string]$Version,
     
     [switch]$DryRun
 )
 
 $ErrorActionPreference = "Stop"
+
+# Get the repo root (where Cargo.toml is)
+$repoRoot = git rev-parse --show-toplevel 2>$null
+if (-not $repoRoot) {
+    Write-Error "Not in a git repository"
+    exit 1
+}
+
+# If version not provided, read from Cargo.toml
+if (-not $Version) {
+    $cargoToml = Join-Path $repoRoot "Cargo.toml"
+    if (-not (Test-Path $cargoToml)) {
+        Write-Error "Cargo.toml not found at $cargoToml"
+        exit 1
+    }
+    
+    $content = Get-Content $cargoToml -Raw
+    if ($content -match 'version\s*=\s*"(\d+)\.(\d+)\.(\d+)"') {
+        $Version = "v$($Matches[1]).$($Matches[2]).$($Matches[3])"
+    } else {
+        Write-Error "Could not parse version from Cargo.toml"
+        exit 1
+    }
+}
 
 # Validate version format
 if ($Version -notmatch '^v\d+\.\d+\.\d+$') {
