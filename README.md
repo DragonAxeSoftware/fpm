@@ -185,27 +185,22 @@ This project uses GitHub Actions for continuous integration and releases:
 
 ### Creating a Release
 
-Use the release script to bump the version and trigger a release:
+1. Update the version in `Cargo.toml`
+2. Commit the change
+3. Run the release script to create and push the tag:
 
 ```powershell
-# Bump patch version (0.1.0 -> 0.1.1)
+# Create release from version in Cargo.toml
 .\scripts\devops\release.ps1
-
-# Bump minor version (0.1.0 -> 0.2.0)
-.\scripts\devops\release.ps1 -Bump minor
-
-# Bump major version (0.1.0 -> 1.0.0)
-.\scripts\devops\release.ps1 -Bump major
 
 # Preview without making changes
 .\scripts\devops\release.ps1 -DryRun
 ```
 
 The script will:
-1. Update the version in `Cargo.toml`
-2. Commit the version bump
-3. Create and push a git tag (e.g., `v0.2.0`)
-4. Trigger the GitHub Actions release workflow
+1. Read the version from `Cargo.toml`
+2. Create and push a git tag (e.g., `v0.2.0`)
+3. Trigger the GitHub Actions release workflow
 
 Binaries are built for:
 - Linux x64 and ARM64
