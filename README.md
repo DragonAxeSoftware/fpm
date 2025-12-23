@@ -13,11 +13,21 @@ fpm allows you to:
 
 ## Installation
 
-```bash
-cargo install fpm
+### Windows (PowerShell)
+
+```powershell
+irm https://raw.githubusercontent.com/DragonAxeSoftware/fpm/main/install.ps1 | iex
 ```
 
-Or build from source:
+This downloads the latest release, installs to `~/.fpm/bin`, and adds it to your PATH.
+
+### From Source
+
+```bash
+cargo install --path .
+```
+
+Or build manually:
 
 ```bash
 cargo build --release
