@@ -144,6 +144,66 @@ version = "0.0.X"  # Incremented by integration tests
 
 The `test_counter.txt` file contains an incrementing number to verify that new files can be pushed alongside existing file modifications.
 
+## Development
+
+### Building
+
+```bash
+cargo build --release
+```
+
+### Running Tests
+
+```bash
+# Unit tests
+cargo test --lib unit_tests
+
+# Local integration tests (requires binary built first)
+cargo build && cargo test --lib local_integration_tests
+
+# Format and lint checks
+cargo fmt --all -- --check
+cargo clippy --all-targets --all-features -- -D warnings
+```
+
+### CI/CD
+
+This project uses GitHub Actions for continuous integration and releases:
+
+- **CI Workflow** (`ci.yml`): Runs format checks, clippy, and tests. Triggered manually via the Actions tab.
+- **Release Workflow** (`release.yml`): Builds binaries for all platforms when a version tag is pushed.
+
+### Creating a Release
+
+Use the release script to bump the version and trigger a release:
+
+```powershell
+# Bump patch version (0.1.0 -> 0.1.1)
+.\scripts\devops\release.ps1
+
+# Bump minor version (0.1.0 -> 0.2.0)
+.\scripts\devops\release.ps1 -Bump minor
+
+# Bump major version (0.1.0 -> 1.0.0)
+.\scripts\devops\release.ps1 -Bump major
+
+# Preview without making changes
+.\scripts\devops\release.ps1 -DryRun
+```
+
+The script will:
+1. Update the version in `Cargo.toml`
+2. Commit the version bump
+3. Create and push a git tag (e.g., `v0.2.0`)
+4. Trigger the GitHub Actions release workflow
+
+Binaries are built for:
+- Linux x64 and ARM64
+- macOS x64 and ARM64 (Apple Silicon)
+- Windows x64
+
+Releases appear at: https://github.com/DragonAxeSoftware/fpm/releases
+
 ## License
 
 MIT
