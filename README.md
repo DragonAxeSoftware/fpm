@@ -52,7 +52,26 @@ path = "assets"
 [bundles.shared-components]
 version = "2.0.0"
 git = "git@github.com:company/shared-components.git"
+
+# Optionally filter to include only specific directories/files
+[bundles.filtered-bundle]
+version = "1.0.0"
+git = "https://github.com/example/large-repo.git"
+include = ["folder2", "folder3"]
 ```
+
+#### Include Filter
+
+You can use the `include` field to select specific directories or files from a bundle:
+
+```toml
+[bundles.my-bundle]
+version = "1.0.0"
+git = "https://github.com/example/repo.git"
+include = ["folder2", "folder3", "specific-file.txt"]
+```
+
+When `include` is specified, only the listed paths will be copied from the cloned repository. If not specified, all files and directories are included (default behavior). This is useful when you only need a subset of files from a large repository.
 
 ### Commands
 
