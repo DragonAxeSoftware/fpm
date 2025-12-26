@@ -1,6 +1,6 @@
 [package]
 name = "fpm"
-version = "0.1.0"
+version = "0.1.1-beta.1"
 edition = "2021"
 description = "A file package manager that resembles Git and NPM, but for files in general"
 authors = ["DragonAxe Software"]

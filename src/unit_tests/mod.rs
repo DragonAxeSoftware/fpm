@@ -42,6 +42,7 @@ fn test_full_install_workflow() -> Result<()> {
             path: Some(PathBuf::from("assets")),
             branch: None,
             ssh_key: None,
+            include: None,
         },
     );
 
@@ -53,6 +54,7 @@ fn test_full_install_workflow() -> Result<()> {
             path: None,
             branch: Some("main".to_string()),
             ssh_key: None,
+            include: None,
         },
     );
 
@@ -145,6 +147,7 @@ fn test_nested_bundles_workflow() -> Result<()> {
             path: None,
             branch: None,
             ssh_key: None,
+            include: None,
         },
     );
 
@@ -168,6 +171,7 @@ fn test_nested_bundles_workflow() -> Result<()> {
             path: None,
             branch: None,
             ssh_key: None,
+            include: None,
         },
     );
 
@@ -225,6 +229,7 @@ fn test_duplicate_bundle_names_error() -> Result<()> {
             path: None,
             branch: None,
             ssh_key: None,
+            include: None,
         },
     );
 

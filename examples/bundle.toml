@@ -30,3 +30,11 @@ git = "https://github.com/example/assets.git"
 # version = "2.1.0"
 # git = "git@github.com:company/private-designs.git"
 # path = "designs/v2"
+
+# Example with include filter to select specific directories/files
+# [bundles.filtered-bundle]
+# version = "1.0.0"
+# git = "https://github.com/example/large-repo.git"
+# include = ["folder2", "folder3", "specific-file.txt"]
+# When include is specified, only the listed paths will be copied from the bundle.
+# If not specified, all files and directories are included (default behavior).

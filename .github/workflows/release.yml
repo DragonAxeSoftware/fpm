@@ -18,6 +18,11 @@ jobs:
           # (optional) Path to changelog - we'll create one later
           # changelog: CHANGELOG.md
           token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          # Automatically mark as pre-release if version contains a pre-release identifier
+          # (e.g., v0.1.0-beta.1, v0.2.0-rc.1)
+          GITHUB_REF_TYPE: ${{ github.ref_type }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
 
   upload-assets:
     needs: create-release

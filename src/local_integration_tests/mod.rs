@@ -181,6 +181,7 @@ description = "Test bundle for push command"
             path: None,
             branch: Some("main".to_string()),
             ssh_key: None,
+            include: None,
         },
     );
 
@@ -340,6 +341,7 @@ branch = "main"
             path: None,
             branch: Some("main".to_string()),
             ssh_key: None,
+            include: None,
         },
     );
     create_bundle_manifest(&design_dir, Some("Nested push test"), None, bundles)?;
@@ -470,6 +472,7 @@ description = "Test bundle"
             path: None,
             branch: Some("main".to_string()),
             ssh_key: None,
+            include: None,
         },
     );
     create_bundle_manifest(&design_dir, Some("Test"), None, bundles)?;
