@@ -11,10 +11,10 @@ pub fn load_manifest(path: &Path) -> Result<BundleManifest> {
         .with_context(|| format!("Failed to read manifest file: {}", path.display()))?;
 
     let manifest = parse_manifest(&content)?;
-    
+
     // Check version compatibility and warn if needed
     check_manifest_compatibility(&manifest.fpm_version);
-    
+
     Ok(manifest)
 }
 
