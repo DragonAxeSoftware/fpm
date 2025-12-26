@@ -13,13 +13,19 @@
 .PARAMETER DryRun
     If specified, shows what would happen without making changes
 
+.PARAMETER PreRelease
+    If specified, marks the release as a pre-release (e.g., beta, alpha, rc)
+    This is useful for testing releases without affecting stable users.
+
 .EXAMPLE
-    .\release.ps1                  # Create release from Cargo.toml version
-    .\release.ps1 -DryRun          # Preview without changes
+    .\release.ps1                      # Create stable release from Cargo.toml version
+    .\release.ps1 -DryRun              # Preview without changes
+    .\release.ps1 -PreRelease          # Create pre-release (useful for beta versions)
 #>
 
 param(
-    [switch]$DryRun
+    [switch]$DryRun,
+    [switch]$PreRelease
 )
 
 $ErrorActionPreference = "Stop"
@@ -37,18 +43,24 @@ if (-not (Test-Path $cargoToml)) {
     exit 1
 }
 
-# Read current version
+# Read current version (supports semantic versioning with pre-release identifiers)
 $content = Get-Content $cargoToml -Raw
-if ($content -match 'version\s*=\s*"(\d+)\.(\d+)\.(\d+)"') {
-    $version = "$($Matches[1]).$($Matches[2]).$($Matches[3])"
+if ($content -match 'version\s*=\s*"([\d\.]+-[\w\.]+|\d+\.\d+\.\d+)"') {
+    $version = $Matches[1]
 } else {
     Write-Error "Could not parse version from Cargo.toml"
     exit 1
 }
 
+# Check if version has pre-release identifier
+$hasPreReleaseId = $version -match '-'
+
 Write-Host ""
 Write-Host "Version from Cargo.toml: " -NoNewline
 Write-Host $version -ForegroundColor Green
+if ($hasPreReleaseId) {
+    Write-Host "Pre-release identifier detected in version" -ForegroundColor Yellow
+}
 Write-Host ""
 
 # Check if tag already exists
@@ -62,7 +74,12 @@ if ($DryRun) {
     Write-Host "[DRY RUN] Would perform the following:" -ForegroundColor Cyan
     Write-Host "  1. Create tag: v$version"
     Write-Host "  2. Push tag to origin"
-    Write-Host "  3. GitHub Actions release workflow would build binaries"
+    if ($PreRelease -or $hasPreReleaseId) {
+        Write-Host "  3. GitHub Actions would create a PRE-RELEASE" -ForegroundColor Yellow
+    } else {
+        Write-Host "  3. GitHub Actions would create a stable release"
+    }
+    Write-Host "  4. Build binaries for all platforms"
     exit 0
 }
 
@@ -93,7 +110,14 @@ Write-Host "Pushing tag to origin..." -ForegroundColor Cyan
 git push origin "v$version"
 
 Write-Host ""
-Write-Host "Release v$version initiated!" -ForegroundColor Green
+if ($PreRelease -or $hasPreReleaseId) {
+    Write-Host "Pre-release v$version initiated!" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "This will be marked as a PRE-RELEASE on GitHub." -ForegroundColor Yellow
+    Write-Host "Pre-releases are useful for testing without affecting stable users."
+} else {
+    Write-Host "Release v$version initiated!" -ForegroundColor Green
+}
 Write-Host ""
 Write-Host "The GitHub Actions release workflow is now building binaries."
 Write-Host "Check progress at: https://github.com/DragonAxeSoftware/fpm/actions"

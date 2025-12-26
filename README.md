@@ -204,22 +204,44 @@ This project uses GitHub Actions for continuous integration and releases:
 
 ### Creating a Release
 
-1. Update the version in `Cargo.toml`
+#### Stable Release
+
+1. Update the version in `Cargo.toml` (e.g., `0.2.0`)
 2. Commit the change
 3. Run the release script to create and push the tag:
 
 ```powershell
-# Create release from version in Cargo.toml
+# Create stable release from version in Cargo.toml
 .\scripts\devops\release.ps1
 
 # Preview without making changes
 .\scripts\devops\release.ps1 -DryRun
 ```
 
+#### Pre-Release (Beta/RC)
+
+For testing new features without affecting stable users:
+
+1. Update the version in `Cargo.toml` with a pre-release identifier (e.g., `0.2.0-beta.1`)
+2. Commit the change
+3. Run the release script with the `-PreRelease` flag:
+
+```powershell
+# Create pre-release (automatically detected from version)
+.\scripts\devops\release.ps1 -PreRelease
+
+# Preview pre-release
+.\scripts\devops\release.ps1 -PreRelease -DryRun
+```
+
+Pre-release versions follow semantic versioning format: `MAJOR.MINOR.PATCH-PRERELEASE`
+- Examples: `0.2.0-beta.1`, `1.0.0-rc.2`, `0.3.0-alpha.1`
+
 The script will:
 1. Read the version from `Cargo.toml`
-2. Create and push a git tag (e.g., `v0.2.0`)
+2. Create and push a git tag (e.g., `v0.2.0` or `v0.2.0-beta.1`)
 3. Trigger the GitHub Actions release workflow
+4. Mark as pre-release if version contains a pre-release identifier
 
 Binaries are built for:
 - Linux x64 and ARM64
