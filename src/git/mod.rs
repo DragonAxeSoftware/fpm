@@ -403,18 +403,13 @@ fn apply_include_filter(bundle_path: &Path, include_patterns: &[String]) -> Resu
     let timestamp = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap_or_else(|_| std::time::Duration::from_secs(0))
-        .as_nanos();
+        .as_millis();
     let bundle_name = bundle_path
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("bundle");
     let temp_name = format!("fpm_filter_{}_{}", bundle_name, timestamp);
     let temp_path = std::env::temp_dir().join(temp_name);
-    
-    // Clean up any existing temp directory (shouldn't exist with unique name)
-    if temp_path.exists() {
-        fs::remove_dir_all(&temp_path)?;
-    }
     
     fs::create_dir_all(&temp_path)
         .context("Failed to create temporary directory for filtering")?;
