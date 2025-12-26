@@ -395,13 +395,21 @@ impl GitOperations for GitCliOperations {
 /// then replaces the bundle contents with the filtered version
 fn apply_include_filter(bundle_path: &Path, include_patterns: &[String]) -> Result<()> {
     use std::fs;
+    use std::time::SystemTime;
     
     debug!("Applying include filter to {}: {:?}", bundle_path.display(), include_patterns);
     
-    // Create a temporary directory to hold filtered contents
-    let temp_path = bundle_path.with_extension("tmp_filter");
+    // Create a unique temporary directory in the system temp to avoid conflicts
+    let timestamp = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let temp_name = format!("fpm_filter_{}_{}", 
+        bundle_path.file_name().unwrap_or_default().to_string_lossy(), 
+        timestamp);
+    let temp_path = std::env::temp_dir().join(temp_name);
     
-    // Clean up any existing temp directory
+    // Clean up any existing temp directory (shouldn't exist with unique name)
     if temp_path.exists() {
         fs::remove_dir_all(&temp_path)?;
     }
@@ -503,21 +511,25 @@ pub fn fetch_bundle(
     target_path: &Path,
 ) -> Result<()> {
     let branch = dependency.branch();
+    let is_new_clone = !git_ops.is_repository(target_path);
 
-    if git_ops.is_repository(target_path) {
-        // Repository exists, fetch updates
-        git_ops.fetch_repository(target_path, branch)?;
-    } else {
+    if is_new_clone {
         // Clone the repository
         let ssh_key = dependency.ssh_key.as_deref();
         git_ops.clone_repository(&dependency.git, target_path, branch, ssh_key)?;
-    }
-    
-    // Apply include filter if specified
-    if let Some(include) = &dependency.include {
-        if !include.is_empty() {
-            apply_include_filter(target_path, include)?;
+        
+        // Apply include filter if specified - only on initial clone
+        // This avoids issues with changing include lists on existing repos
+        if let Some(include) = &dependency.include {
+            if !include.is_empty() {
+                apply_include_filter(target_path, include)?;
+            }
         }
+    } else {
+        // Repository exists, fetch updates
+        git_ops.fetch_repository(target_path, branch)?;
+        // Note: We don't re-apply the filter on fetch to avoid unexpected file deletions
+        // if the include list changes. Users can delete and re-install to get a fresh filtered copy.
     }
 
     Ok(())
