@@ -404,9 +404,11 @@ fn apply_include_filter(bundle_path: &Path, include_patterns: &[String]) -> Resu
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap_or_else(|_| std::time::Duration::from_secs(0))
         .as_nanos();
-    let temp_name = format!("fpm_filter_{}_{}", 
-        bundle_path.file_name().unwrap_or_default().to_string_lossy(), 
-        timestamp);
+    let bundle_name = bundle_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("bundle");
+    let temp_name = format!("fpm_filter_{}_{}", bundle_name, timestamp);
     let temp_path = std::env::temp_dir().join(temp_name);
     
     // Clean up any existing temp directory (shouldn't exist with unique name)
@@ -450,8 +452,8 @@ fn apply_include_filter(bundle_path: &Path, include_patterns: &[String]) -> Resu
         let path = entry.path();
         let name = entry.file_name();
         
-        // Skip .git directory and our temp directory
-        if name == ".git" || path == temp_path {
+        // Skip .git directory
+        if name == ".git" {
             continue;
         }
         
