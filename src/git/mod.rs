@@ -402,7 +402,7 @@ fn apply_include_filter(bundle_path: &Path, include_patterns: &[String]) -> Resu
     // Create a unique temporary directory in the system temp to avoid conflicts
     let timestamp = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap()
+        .unwrap_or_else(|_| std::time::Duration::from_secs(0))
         .as_nanos();
     let temp_name = format!("fpm_filter_{}_{}", 
         bundle_path.file_name().unwrap_or_default().to_string_lossy(), 
@@ -422,25 +422,25 @@ fn apply_include_filter(bundle_path: &Path, include_patterns: &[String]) -> Resu
         let source = bundle_path.join(pattern);
         let dest = temp_path.join(pattern);
         
-        if !source.exists() {
-            // Log warning but continue - the path might not exist
-            debug!("Include pattern '{}' not found in bundle", pattern);
-            continue;
-        }
-        
         // Create parent directories if needed
         if let Some(parent) = dest.parent() {
             fs::create_dir_all(parent)
                 .with_context(|| format!("Failed to create directory: {}", parent.display()))?;
         }
         
-        // Copy file or directory
-        if source.is_file() {
-            fs::copy(&source, &dest)
-                .with_context(|| format!("Failed to copy file: {}", source.display()))?;
-        } else if source.is_dir() {
-            copy_dir_recursive(&source, &dest)
-                .with_context(|| format!("Failed to copy directory: {}", source.display()))?;
+        // Copy file or directory - let the operation handle existence checks
+        // This avoids TOCTOU (time-of-check-time-of-use) race conditions
+        if let Ok(metadata) = fs::metadata(&source) {
+            if metadata.is_file() {
+                fs::copy(&source, &dest)
+                    .with_context(|| format!("Failed to copy file: {}", source.display()))?;
+            } else if metadata.is_dir() {
+                copy_dir_recursive(&source, &dest)
+                    .with_context(|| format!("Failed to copy directory: {}", source.display()))?;
+            }
+        } else {
+            // Log warning but continue - the path might not exist
+            debug!("Include pattern '{}' not found in bundle", pattern);
         }
     }
     
