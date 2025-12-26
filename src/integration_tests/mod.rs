@@ -80,6 +80,7 @@ fn test_install_from_real_git_repository() -> Result<()> {
             path: None,
             branch: Some("main".to_string()),
             ssh_key: None,
+            include: None,
         },
     );
 
@@ -186,6 +187,7 @@ fn test_install_with_specific_branch() -> Result<()> {
             path: None,
             branch: Some("main".to_string()),
             ssh_key: None,
+            include: None,
         },
     );
 
@@ -232,6 +234,7 @@ fn test_status_shows_correct_state_after_install() -> Result<()> {
             path: None,
             branch: Some("main".to_string()),
             ssh_key: None,
+            include: None,
         },
     );
 
@@ -301,6 +304,7 @@ fn test_install_nested_bundles() -> Result<()> {
             path: None,
             branch: Some("main".to_string()),
             ssh_key: None,
+            include: None,
         },
     );
 
@@ -313,6 +317,7 @@ fn test_install_nested_bundles() -> Result<()> {
             path: None,
             branch: Some("main".to_string()),
             ssh_key: None,
+            include: None,
         },
     );
 
@@ -508,6 +513,7 @@ fn test_push_counter_to_real_repo() -> Result<()> {
             path: None,
             branch: Some("main".to_string()),
             ssh_key: None,
+            include: None,
         },
     );
 
@@ -616,6 +622,7 @@ fn test_push_nested_bundles_to_real_repos() -> Result<()> {
             path: None,
             branch: Some("main".to_string()),
             ssh_key: None,
+            include: None,
         },
     );
 
@@ -627,6 +634,7 @@ fn test_push_nested_bundles_to_real_repos() -> Result<()> {
             path: None,
             branch: Some("main".to_string()),
             ssh_key: None,
+            include: None,
         },
     );
 

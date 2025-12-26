@@ -110,6 +110,7 @@ mod unit_tests {
                 path: None,
                 branch: None,
                 ssh_key: None,
+                include: None,
             },
         );
 

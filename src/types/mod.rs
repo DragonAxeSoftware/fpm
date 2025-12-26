@@ -98,6 +98,15 @@ pub struct BundleDependency {
     /// TODO: Add integration tests with SSH key from environment variable.
     #[serde(default)]
     pub ssh_key: Option<PathBuf>,
+
+    /// Optional list of directories/files to include from the bundle.
+    /// If specified, only these paths will be copied from the cloned repository.
+    /// If not specified, all files and directories are included (default behavior).
+    /// Paths are relative to the bundle root.
+    ///
+    /// Example: `include = ["folder2", "folder3"]` will only copy folder2 and folder3
+    #[serde(default)]
+    pub include: Option<Vec<String>>,
 }
 
 impl BundleDependency {
@@ -193,5 +202,45 @@ mod unit_tests {
 
         manifest.root = Some(PathBuf::from("artifacts"));
         assert!(manifest.is_source_bundle());
+    }
+
+    #[test]
+    fn test_bundle_dependency_with_include() {
+        let toml_str = r#"
+            fpm_version = "0.1.0"
+            identifier = "fpm-bundle"
+            
+            [bundles.filtered-bundle]
+            version = "1.0.0"
+            git = "https://github.com/example/repo.git"
+            include = ["folder2", "folder3"]
+        "#;
+
+        let manifest: BundleManifest = toml::from_str(toml_str).unwrap();
+        let bundle = manifest.bundles.get("filtered-bundle").unwrap();
+        
+        assert!(bundle.include.is_some());
+        let include = bundle.include.as_ref().unwrap();
+        assert_eq!(include.len(), 2);
+        assert_eq!(include[0], "folder2");
+        assert_eq!(include[1], "folder3");
+    }
+
+    #[test]
+    fn test_bundle_dependency_without_include() {
+        let toml_str = r#"
+            fpm_version = "0.1.0"
+            identifier = "fpm-bundle"
+            
+            [bundles.full-bundle]
+            version = "1.0.0"
+            git = "https://github.com/example/repo.git"
+        "#;
+
+        let manifest: BundleManifest = toml::from_str(toml_str).unwrap();
+        let bundle = manifest.bundles.get("full-bundle").unwrap();
+        
+        // When not specified, include should be None (default behavior)
+        assert!(bundle.include.is_none());
     }
 }
