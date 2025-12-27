@@ -218,7 +218,7 @@ mod unit_tests {
 
         let manifest: BundleManifest = toml::from_str(toml_str).unwrap();
         let bundle = manifest.bundles.get("filtered-bundle").unwrap();
-        
+
         assert!(bundle.include.is_some());
         let include = bundle.include.as_ref().unwrap();
         assert_eq!(include.len(), 2);
@@ -239,7 +239,7 @@ mod unit_tests {
 
         let manifest: BundleManifest = toml::from_str(toml_str).unwrap();
         let bundle = manifest.bundles.get("full-bundle").unwrap();
-        
+
         // When not specified, include should be None (default behavior)
         assert!(bundle.include.is_none());
     }

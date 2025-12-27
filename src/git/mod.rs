@@ -396,9 +396,13 @@ impl GitOperations for GitCliOperations {
 fn apply_include_filter(bundle_path: &Path, include_patterns: &[String]) -> Result<()> {
     use std::fs;
     use std::time::SystemTime;
-    
-    debug!("Applying include filter to {}: {:?}", bundle_path.display(), include_patterns);
-    
+
+    debug!(
+        "Applying include filter to {}: {:?}",
+        bundle_path.display(),
+        include_patterns
+    );
+
     // Create a unique temporary directory in the system temp to avoid conflicts
     let timestamp = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
@@ -410,21 +414,20 @@ fn apply_include_filter(bundle_path: &Path, include_patterns: &[String]) -> Resu
         .unwrap_or("bundle");
     let temp_name = format!("fpm_filter_{}_{}", bundle_name, timestamp);
     let temp_path = std::env::temp_dir().join(temp_name);
-    
-    fs::create_dir_all(&temp_path)
-        .context("Failed to create temporary directory for filtering")?;
-    
+
+    fs::create_dir_all(&temp_path).context("Failed to create temporary directory for filtering")?;
+
     // Copy only the included paths
     for pattern in include_patterns {
         let source = bundle_path.join(pattern);
         let dest = temp_path.join(pattern);
-        
+
         // Create parent directories if needed
         if let Some(parent) = dest.parent() {
             fs::create_dir_all(parent)
                 .with_context(|| format!("Failed to create directory: {}", parent.display()))?;
         }
-        
+
         // Copy file or directory - let the operation handle existence checks
         // This avoids TOCTOU (time-of-check-time-of-use) race conditions
         if let Ok(metadata) = fs::metadata(&source) {
@@ -440,56 +443,56 @@ fn apply_include_filter(bundle_path: &Path, include_patterns: &[String]) -> Resu
             debug!("Include pattern '{}' not found in bundle", pattern);
         }
     }
-    
+
     // Remove all contents from the bundle directory except .git
     for entry in fs::read_dir(bundle_path)? {
         let entry = entry?;
         let path = entry.path();
         let name = entry.file_name();
-        
+
         // Skip .git directory
         if name == ".git" {
             continue;
         }
-        
+
         if path.is_dir() {
             fs::remove_dir_all(&path)?;
         } else {
             fs::remove_file(&path)?;
         }
     }
-    
+
     // Copy filtered contents back to the bundle directory
     for entry in fs::read_dir(&temp_path)? {
         let entry = entry?;
         let source = entry.path();
         let dest = bundle_path.join(entry.file_name());
-        
+
         if source.is_file() {
             fs::copy(&source, &dest)?;
         } else if source.is_dir() {
             copy_dir_recursive(&source, &dest)?;
         }
     }
-    
+
     // Clean up temp directory
     fs::remove_dir_all(&temp_path)?;
-    
+
     Ok(())
 }
 
 /// Recursively copies a directory
 fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<()> {
     use std::fs;
-    
+
     fs::create_dir_all(dst)
         .with_context(|| format!("Failed to create directory: {}", dst.display()))?;
-    
+
     for entry in fs::read_dir(src)? {
         let entry = entry?;
         let src_path = entry.path();
         let dst_path = dst.join(entry.file_name());
-        
+
         if src_path.is_file() {
             fs::copy(&src_path, &dst_path)
                 .with_context(|| format!("Failed to copy file: {}", src_path.display()))?;
@@ -497,7 +500,7 @@ fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<()> {
             copy_dir_recursive(&src_path, &dst_path)?;
         }
     }
-    
+
     Ok(())
 }
 
@@ -514,7 +517,7 @@ pub fn fetch_bundle(
         // Clone the repository
         let ssh_key = dependency.ssh_key.as_deref();
         git_ops.clone_repository(&dependency.git, target_path, branch, ssh_key)?;
-        
+
         // Apply include filter if specified - only on initial clone
         // This avoids issues with changing include lists on existing repos
         if let Some(include) = &dependency.include {
@@ -692,13 +695,25 @@ mod unit_tests {
         assert!(!folder1.exists(), "folder1 should be removed");
         assert!(folder2.exists(), "folder2 should be kept");
         assert!(folder3.exists(), "folder3 should be kept");
-        assert!(!bundle_path.join("root_file.txt").exists(), "root_file.txt should be removed");
+        assert!(
+            !bundle_path.join("root_file.txt").exists(),
+            "root_file.txt should be removed"
+        );
         assert!(git_dir.exists(), ".git should be preserved");
-        assert!(git_dir.join("config").exists(), ".git/config should be preserved");
+        assert!(
+            git_dir.join("config").exists(),
+            ".git/config should be preserved"
+        );
 
         // Verify file contents
-        assert_eq!(fs::read_to_string(folder2.join("file2.txt")).unwrap(), "content2");
-        assert_eq!(fs::read_to_string(folder3.join("file3.txt")).unwrap(), "content3");
+        assert_eq!(
+            fs::read_to_string(folder2.join("file2.txt")).unwrap(),
+            "content2"
+        );
+        assert_eq!(
+            fs::read_to_string(folder3.join("file3.txt")).unwrap(),
+            "content3"
+        );
     }
 
     #[test]
@@ -723,7 +738,13 @@ mod unit_tests {
         assert!(dst.join("file1.txt").exists());
         assert!(dst.join("subdir").exists());
         assert!(dst.join("subdir").join("file2.txt").exists());
-        assert_eq!(fs::read_to_string(dst.join("file1.txt")).unwrap(), "content1");
-        assert_eq!(fs::read_to_string(dst.join("subdir").join("file2.txt")).unwrap(), "content2");
+        assert_eq!(
+            fs::read_to_string(dst.join("file1.txt")).unwrap(),
+            "content1"
+        );
+        assert_eq!(
+            fs::read_to_string(dst.join("subdir").join("file2.txt")).unwrap(),
+            "content2"
+        );
     }
 }
